@@ -1,4 +1,3 @@
-//Hung_14020220
 #include <stdio.h>	//printf
 #include <string.h>	//strcpy, strcmp, strncpy, strtok
 #include <stdlib.h>	//exit, malloc
@@ -8,7 +7,7 @@
 #include <sys/socket.h>	// ??
 #include <unistd.h>	//write, read, close
 #include <pthread.h>	//pthread_create, pthread_detach
-//Others
+//
 #include <errno.h>
 #include <netdb.h>
 #include <sys/select.h>
@@ -19,9 +18,9 @@
 #define MTU 1200
 #define PORT 5000
 
-void *send_handler(void *sock) {
+void *send_handler(void *sock);
 void *receive_handler(void *sock);
-void sendfile(int sock);
+void * sendfile(void * sock);
 void downfile(int sock);
 void *get_in_addr(struct sockaddr *sa);
 
@@ -87,10 +86,10 @@ void *send_handler(void *socket) {
 	puts("Connected\n");
 	puts("List Main Menu");
 	puts("-------------------------------------------------------------------------------------------");
-	puts("|'@exit' to quit					'@create' to create new topic		|");
-	puts("|'@s' to send File				'@join' to join a existed topic		|");
+	puts("|'@exit' to quit							'@create' to create new topic		|");
+	puts("|'@s' to send File						'@join' to join a existed topic		|");
 	puts("|'@f' to download File				'@listonline' to list all users online	|");
-	puts("|'@listtopic' to list all topic'			'@listuser' to list...");
+	puts("|'@listtopic' to list all topic'			'@listuser' to list...				|");
 
 	puts("===========================================================================================");
 	puts("Connected Chat");
@@ -182,9 +181,42 @@ void *receive_handler(void *connfd) {
 	}
 	return 0;
 }
-//sendfile to server
-void sendfile(int sock){
-	
+//sendfile from client to server
+//editting...
+void * sendfile(void * sock){
+	int connfd = *(int*)sock;
+	char fileName[256];
+	scanf("%s", fileName);
+	bzero(fileName,256);
+	while(1){
+			write(connfd, fileName, 256);
+            printf("\nClient want to sendfile : %s. \n", fileName);
+            
+            FILE *fp;
+        	fp = fopen(fileName,"rb");
+            if(fp==NULL){
+		        printf("File open error or not exist file.\n");
+		        write(connfd, "error", sizeof("error"));
+                continue;
+            }else{
+ 				int nread;
+    // send content file
+        		char contentFile[255] = {0};
+        		do{
+    /* Read file in chunks of 256 bytes */
+		    		nread=fread(contentFile, 1, 256, fp);
+		    		write(connfd, contentFile, nread);
+        		}while(nread >= sizeof(contentFile));
+
+		        if (nread < 256){
+		            if (feof(fp))
+		                printf("Send file successfull.\n");
+		            if (ferror(fp))
+		                printf("Error reading file.\n");
+		        }
+            }
+            	fclose(fp);
+        }
 }
 //downloadfile from server funtion
 void downfile(int socket) {
