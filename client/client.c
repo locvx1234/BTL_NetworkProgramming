@@ -8,7 +8,7 @@
 #include <sys/socket.h>	// ??
 #include <unistd.h>	//write, read, close
 #include <pthread.h>	//pthread_create, pthread_detach
-//
+//Others
 #include <errno.h>
 #include <netdb.h>
 #include <sys/select.h>
