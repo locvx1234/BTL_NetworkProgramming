@@ -38,6 +38,9 @@ void clientCreate(int socket, char username[NAME_SIZE]);
 //Ham them client dang online vao danh sach client trong room chat
 void clientJoin(int socket, char title[NAME_SIZE]);
 
+//
+int joinRoom(int socket, char title[NAME_SIZE]);
+
 //Ham xoa client, chi goi den khi client gui command @exit (lenh so 9)
 struct client *clientDelete(int socket);
 
@@ -55,6 +58,15 @@ char *getClientTitleBySocket(int socket);
 
 //Ham tra ve username cua client theo socket
 char *getClientUsernameBySocket(int socket);
+
+//
+int getSocketByUsername(char username[NAME_SIZE]);
+
+//
+struct client *getClientByName(char username[NAME_SIZE]);
+
+//
+int isTopicExist(char username[NAME_SIZE]);
 
 //Ham gui mess cho toan bo client trong room chat, ngoai tru nguoi gui
 void clientChat(int socket, char message[MTU]);
@@ -229,7 +241,7 @@ static void *doit(void *socket) {
 		read(connfd, message, sizeof(message));
 		char command = message[0];
 		strncpy(message, message+1, strlen(message));
-		if (message[0] == '0') {		//@create. Tao room chat.
+		if (command == '0') {		//@create. Tao room chat.
 			topicCreate(connfd, message);
 		} else if (command == '1') {		//@invite.
 			clientInvite(connfd, message);
@@ -271,19 +283,26 @@ void clientCreate(int socket, char username[NAME_SIZE]) {
 }
 
 void clientJoin(int socket, char title[NAME_SIZE]) {
-	if (topics == NULL) {
-		write(socket, "1", 1);	//1 nghia la ko ton tai topic nao de join
+	int check = joinRoom(socket, title);
+	if (check == 1) {
+		write(socket, "1", 1);	//2 nghia la ko tim thay topic nao co ten nhu the de join
+	} else if (check == 2) {
+		write(socket, "2", 1);	//3 nghia la topic muon join full nguoi cmnr
+	} else if (check == 0) {
+		write(socket, "0", 1);	//0 nghia la join thanh cong roi
+	}
+}
+
+int joinRoom(int socket, char title[NAME_SIZE]) {
+	struct topic *tmpTopic = getTopicByTitle(title);
+	if (tmpTopic == NULL) {	//1 nghia la khong tim thay topic
+		return 1;
+	} else if (tmpTopic->countMember == NUMBER_OF_CLIENT) {
+		return 2;	//2 nghia la topic da full nguoi
 	} else {
-		struct topic *tmpTopic = getTopicByTitle(title);
-		if (tmpTopic == NULL) {
-			write(socket, "2", 1);	//2 nghia la ko tim thay topic nao co ten nhu the de join
-		} else if (tmpTopic->countMember == 8) {
-			write(socket, "3", 1);	//3 nghia la topic muon join full nguoi cmnr
-		} else {
-			tmpTopic->member[tmpTopic->countMember] = socket;
-			tmpTopic->countMember++;
-			write(socket, "0", 1);	//0 nghia la join thanh cong roi
-		}
+		tmpTopic->member[tmpTopic->countMember] = socket;
+		tmpTopic->countMember++;
+		return 0;	//0 nghia la join thanh cong roi
 	}
 }
 
@@ -370,6 +389,38 @@ char *getClientUsernameBySocket(int socket) {
 	}
 }
 
+int getSocketByUsername(char username[NAME_SIZE]){
+	int socket;
+	struct client *tmpClient;
+	for (tmpClient = clients; tmpClient != NULL; tmpClient = tmpClient->next) {
+		if (tmpClient->username == username) {
+			socket = tmpClient->socket;
+			break;
+		}
+	}
+	return socket;
+}
+
+struct client *getClientByName(char username[NAME_SIZE]){
+	struct client *tmpClient;
+	for (tmpClient = clients; tmpClient != NULL; tmpClient = tmpClient->next) {
+		if (tmpClient->username == username) {
+			return tmpClient;
+		}
+	}
+	return NULL;
+}
+
+int isTopicExist(char title[NAME_SIZE]){
+	struct topic *tmpTopic;
+	for (tmpTopic = topics; tmpTopic != NULL; tmpTopic = tmpTopic->next) {
+		if(tmpTopic->title == title){
+			return 1;
+		}
+	}
+	return 0;
+}
+
 void clientChat(int socket, char message[MTU]) {
 	struct topic *tmpTopic;
 	for (tmpTopic = topics; tmpTopic != NULL; tmpTopic = tmpTopic->next) {
@@ -400,11 +451,48 @@ struct topic *getTopicByTitle(char title[NAME_SIZE]) {
 	return tmpTopic;
 }
 
+
 void clientInvite(int socket, char message[MTU]) {
-	char title[NAME_SIZE];
-	strcpy(title, getClientTitleBySocket(socket));
-	struct topic *tmpTopic = getTopicByTitle(title);
-	//Tu dung nghi ra, ham invite viet kho vc
+	struct topic *tmpTopic = getTopicByTitle(getClientTitleBySocket(socket));
+	char buffer[DATA_SIZE] = "";
+	//tach user 
+	char *name ;
+    name = strtok(message, " ");
+
+    while( name != NULL){
+    	memset(buffer, 0, sizeof(buffer));
+        printf("%s\n", name);
+        strcat(buffer, name);
+        // check trang thai user va gui thong bao
+		
+		struct client *tmpClient = getClientByName(name);
+
+		if (tmpClient != NULL){
+			if ( strcmp(tmpClient->title, "") == 0 ) {
+				int check = joinRoom(tmpClient->socket, tmpTopic->title);
+				if (check == 0) {
+					strcat(buffer, " invited successfull");
+					char invitation[DATA_SIZE] = "0You has been invited to topic ";
+					strcat(invitation, tmpTopic->title);
+					write(tmpClient->socket, buffer, strlen(buffer));
+				} else if (check == 2) {	//Neu room full nguoi
+					strcat(buffer, " moi ko duoc do phong day");
+				}
+			} else {
+				if (strcmp(tmpClient->title, tmpTopic->title) == 0 ){
+					strcat(buffer, " already in this topic");
+				} else {
+					strcat(buffer, " already in topic ");
+					strcat(buffer, tmpClient->title);
+				}
+			}
+		} else {
+			strcat(buffer, " doesn't exist");
+		}
+
+		write(socket, buffer, strlen(buffer));
+        name = strtok(NULL, " ");
+    }
 }
 
 void sendListOnline(int socket){
