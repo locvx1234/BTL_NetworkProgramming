@@ -7,6 +7,7 @@
 #include <sys/socket.h>	// ??
 #include <unistd.h>	//write, read, close
 #include <pthread.h>	//pthread_create, pthread_detach
+#include <dirent.h>	//rmdir, mkdir
 
 #define NUMBER_OF_CLIENT 32
 #define NUMBER_OF_FILE 5
