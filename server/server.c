@@ -80,6 +80,12 @@ void sendListUser(int socket);
 //
 void sendListTopic(int socket);
 
+//Ham lay list file co trong folder
+int buildListFileInFolder(char *listFile[], const char *path);
+
+//Ham xoa folder
+void deleteFolder(const char *path);
+
 //Ham ... deo biet mo ta the nao
 void clientInvite(int socket, char message[MTU]);
 
@@ -525,4 +531,37 @@ void sendListTopic(int socket){
 		strcat(buffer, tmpTopic->title);
 	}
 	write(socket, buffer, strlen(buffer));
+}
+
+int buildListFileInFolder(char *listFile[], const char *path) {
+	DIR *d = opendir(path);
+	int i = 0;
+	if (d) {
+		struct dirent *dir;
+		while ((dir = readdir(d)) != NULL) {
+			if (!strcmp(dir->d_name, ".") || !strcmp(dir->d_name, "..")) continue;
+			listFile[i] = malloc(NAME_SIZE);
+			strcpy(listFile[i], dir->d_name);
+			i++;
+		}
+		closedir(d);
+	}
+	return i;
+}
+
+void deleteFolder(const char *path) {
+	char *listFile[NAME_SIZE];
+	int countFile = buildListFileInFolder(listFile, path);
+	int i = 0;
+	for (i = 0; i < countFile; i++) {
+		char *link;
+		int length = strlen(path)+strlen(listFile[i]) + 2;
+		link = malloc(length);
+		snprintf(link, length, "%s/%s", path, listFile[i]);
+		printf("%s", link);
+		unlink(link);
+		free(link);
+	}
+	printf("%s",path);
+	rmdir(path);
 }
