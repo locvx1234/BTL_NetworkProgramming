@@ -59,9 +59,14 @@ char *getClientUsernameBySocket(int socket);
 //Ham gui mess cho toan bo client trong room chat, ngoai tru nguoi gui
 void clientChat(int socket, char message[MTU]);
 
+//
 void sendListOnline(int socket);
 
+//
 void sendListUser(int socket);
+
+//
+void sendListTopic(int socket);
 
 //Ham ... deo biet mo ta the nao
 void clientInvite(int socket, char message[MTU]);
@@ -237,7 +242,7 @@ static void *doit(void *socket) {
 		} else if (command == '5') {		//@listfile. Gui danh sach nhung file da duoc upload len trong room chat
 			//
 		} else if (command == '6') {		//@listtopic. Gui danh sach nhung topic hien co.
-			//
+			sendListTopic(connfd);
 		} else if (command == '7') {
 			// module unused
 		} else if (command == '8') {		//@out. Client thoat khoi room chat hien tai.
@@ -420,6 +425,16 @@ void sendListUser(int socket){
 	for (i = 0 ; i < tmpTopic->countMember ; i++){
 		strcat(buffer, "\n");
 		strcat(buffer, getClientUsernameBySocket(tmpTopic->member[i]));
+	}
+	write(socket, buffer, strlen(buffer));
+}
+
+void sendListTopic(int socket){
+	struct topic *tmpTopic;
+	char buffer[DATA_SIZE] = "0List topic:";
+	for (tmpTopic = topics; tmpTopic != NULL; tmpTopic = tmpTopic->next) {
+		strcat(buffer, "\n");
+		strcat(buffer, tmpTopic->title);
 	}
 	write(socket, buffer, strlen(buffer));
 }
