@@ -53,9 +53,15 @@ struct topic *getTopicByTitle(char title[NAME_SIZE]);
 //Ham tra ve ten topic ma client tham gia
 char *getClientTitleBySocket(int socket);
 
+//Ham tra ve username cua client theo socket
+char *getClientUsernameBySocket(int socket);
+
 //Ham gui mess cho toan bo client trong room chat, ngoai tru nguoi gui
 void clientChat(int socket, char message[MTU]);
 
+void sendListOnline(int socket);
+
+void sendListUser(int socket);
 
 //Ham ... deo biet mo ta the nao
 void clientInvite(int socket, char message[MTU]);
@@ -64,10 +70,10 @@ void clientInvite(int socket, char message[MTU]);
 static void *doit(void *socket);
 
 //Ham sendFile tu server cho client
-void *sendfile(void * );
+// void *sendfile(void * );
 
 //Ham nhan file tu client
-void *downfile(void *);
+// void *downfile(void *);
 
 //Bien toan cuc
 struct client *clients = NULL;
@@ -118,9 +124,7 @@ int main(int argc, char **argv) {
 		connSocket = malloc(sizeof(int));
 		*connSocket = accept(listenSocket, (struct sockaddr*)&cliaddr, &clilen);
 		pthread_mutex_lock(&mutex);
-		char s[32];
-		inet_ntop(AF_INET, &(cliaddr.sin_addr), s, sizeof(s));
-		printf("Accept %s\n", s);
+		printf("IP %s , port %d \n",inet_ntoa(cliaddr.sin_addr), cliaddr.sin_port);
 		memset(message, 0, sizeof(message));
 		read(*connSocket, message, sizeof(message));		//Nhan goi tin chua username tu client moi
 		clientCreate(*connSocket, message);			//Goi den ham cho client moi vao danh sach luu tru
@@ -128,86 +132,86 @@ int main(int argc, char **argv) {
 		pthread_mutex_unlock(&mutex);
 	}
 	// send file
-	int i, *connfd;
-    	for (i = 0; i < 5; i++){ /*Gioi han gui 5 file - neu co thay doi thi se sua sau*/
-        	connfd = malloc(sizeof(int));
-       		*connfd = accept(listenSocket, (struct sockaddr *)NULL ,NULL);
-        	pthread_create(&tid, NULL, &sendfile, (void *)connfd);
-		pthread_create(&tid, NULL, &downfile, (void *)connfd);
-        	printf("Connect client %d\n", i); 
-    	}
+	// int i, *connfd;
+ //    	for (i = 0; i < 5; i++){ /*Gioi han gui 5 file - neu co thay doi thi se sua sau*/
+ //        	connfd = malloc(sizeof(int));
+ //       		*connfd = accept(listenSocket, (struct sockaddr *)NULL ,NULL);
+ //        	pthread_create(&tid, NULL, &sendfile, (void *)connfd);
+	// 		pthread_create(&tid, NULL, &downfile, (void *)connfd);
+ //        	printf("Connect client %d\n", i); 
+ //    	}
 	return 0;
 }
 
-void * downfile(void * sockfd){
-	int bytesReceived = 0;
-    	char recvBuff[256], fileName[256];
-	while(1){
-		read(connfd, filename, 256);	
-		printf("\nClient want to send of file : %s. \n", filename);
+// void * downfile(void * sockfd){
+// 	int bytesReceived = 0;
+//     	char recvBuff[256], fileName[256];
+// 	while(1){
+// 		read(connfd, filename, 256);	
+// 		printf("\nClient want to send of file : %s. \n", filename);
 		
-		FILE *fp;	    
-    		fp = fopen(fileName, "wb"); 
-	   	do {
-			  memset(recvBuff, 0, sizeof(recvBuff));
-		  	  bytesReceived=read(sockfd, recvBuff, sizeof(recvBuff));
-			  if(strcmp(recvBuff,"error") == 0){
-		      		memset(recvBuff, 0, sizeof(recvBuff));
-		      		printf("File name doesn't exist in your server or invalid. \n");
-		      	  	continue;
-		          }
-			  else{
-		          	fwrite(recvBuff, 1,bytesReceived,fp);
-               		  }
-	   	}while(bytesReceived >= 256);	   
-	   	fclose(fp);     
-	        if(bytesReceived < 0){
-		    printf("Read Error \n");
-	        }   	
-	}
-}
+// 		FILE *fp;	    
+//     		fp = fopen(fileName, "wb"); 
+// 	   	do {
+// 			  memset(recvBuff, 0, sizeof(recvBuff));
+// 		  	  bytesReceived=read(sockfd, recvBuff, sizeof(recvBuff));
+// 			  if(strcmp(recvBuff,"error") == 0){
+// 		      		memset(recvBuff, 0, sizeof(recvBuff));
+// 		      		printf("File name doesn't exist in your server or invalid. \n");
+// 		      	  	continue;
+// 		          }
+// 			  else{
+// 		          	fwrite(recvBuff, 1,bytesReceived,fp);
+//                		  }
+// 	   	}while(bytesReceived >= 256);	   
+// 	   	fclose(fp);     
+// 	        if(bytesReceived < 0){
+// 		    printf("Read Error \n");
+// 	        }   	
+// 	}
+// }
 
-void * sendfile(void * sockfd){
-    int connfd = *(int*)sockfd;
-    char filename[256];
-    bzero(filename,256);
-    while(1)
-    {
-            read(connfd, filename, 256);
-            if(strcmp(filename,"@") == 0){
-                printf("Connection ended!");
-                break;
-            }
-            printf("\nClient want to download file : %s. \n", filename);
+// void * sendfile(void * sockfd){
+//     int connfd = *(int*)sockfd;
+//     char filename[256];
+//     bzero(filename,256);
+//     while(1)
+//     {
+//             read(connfd, filename, 256);
+//             if(strcmp(filename,"@") == 0){
+//                 printf("Connection ended!");
+//                 break;
+//             }
+//             printf("\nClient want to download file : %s. \n", filename);
             
-            FILE *fp;
-            fp = fopen(filename,"rb");
-            if(fp==NULL)
-            {
-                printf("File open error or not exist file.\n");
-                write(connfd, "error", sizeof("error"));
-                    continue;
-            }else{
+//             FILE *fp;
+//             fp = fopen(filename,"rb");
+//             if(fp==NULL)
+//             {
+//                 printf("File open error or not exist file.\n");
+//                 write(connfd, "error", sizeof("error"));
+//                     continue;
+//             }else{
  
-            int nread;
-            // send content file
-            char contentfile[255] = {0};
-            do{
-            /* Read file in chunks of 256 bytes */
-		    nread=fread(contentfile, 1, 256, fp);
-		    write(connfd, contentfile, nread);
-            }while(nread >= sizeof(contentfile));
+//             int nread;
+//             // send content file
+//             char contentfile[255] = {0};
+//             do{
+//             /* Read file in chunks of 256 bytes */
+// 		    nread=fread(contentfile, 1, 256, fp);
+// 		    write(connfd, contentfile, nread);
+//             }while(nread >= sizeof(contentfile));
 
-            	if (nread < 256){
-                    if (feof(fp))
-                        printf("Send file successfull.\n");
-                    if (ferror(fp))
-                        printf("Error reading file.\n");
-                }
-            }
-            fclose(fp);
-     }
-}
+//             	if (nread < 256){
+//                     if (feof(fp))
+//                         printf("Send file successfull.\n");
+//                     if (ferror(fp))
+//                         printf("Error reading file.\n");
+//                 }
+//             }
+//             fclose(fp);
+//      }
+// }
 
 static void *doit(void *socket) {
 	int connfd = *((int*)socket);
@@ -227,15 +231,15 @@ static void *doit(void *socket) {
 		} else if (command == '2') {		//@join.
 			clientJoin(connfd, message);
 		} else if (command == '3') {		//@listonline. Gui danh sach nhung user dang online nhung chua vao room chat nao
-			//
+			sendListOnline(connfd);
 		} else if (command == '4') {		//@listuser. Gui danh sach nhung user co mat trong cung room chat
-			//
+			sendListUser(connfd);
 		} else if (command == '5') {		//@listfile. Gui danh sach nhung file da duoc upload len trong room chat
 			//
 		} else if (command == '6') {		//@listtopic. Gui danh sach nhung topic hien co.
 			//
 		} else if (command == '7') {
-			//
+			// module unused
 		} else if (command == '8') {		//@out. Client thoat khoi room chat hien tai.
 			//
 		} else if (command == '9') {		//@exit. Client 
@@ -346,11 +350,25 @@ char *getClientTitleBySocket(int socket) {
 	}
 }
 
+char *getClientUsernameBySocket(int socket) {
+	if (clients == NULL) {
+		return "";
+	} else {
+		struct client *tmpClient;
+		for (tmpClient = clients; tmpClient != NULL; tmpClient = tmpClient->next) {
+			if (tmpClient->socket == socket) {
+				return tmpClient->username;
+				break;
+			}
+		}
+		return "";
+	}
+}
+
 void clientChat(int socket, char message[MTU]) {
 	struct topic *tmpTopic;
 	for (tmpTopic = topics; tmpTopic != NULL; tmpTopic = tmpTopic->next) {
 		if (strcmp(tmpTopic->title, getClientTitleBySocket(socket)) == 0) {
-			struct client tmpClient;
 			int i;
 			for (i = 0; i < tmpTopic->countMember; i++) {
 				if (socket != tmpTopic->member[i]) {
@@ -382,4 +400,26 @@ void clientInvite(int socket, char message[MTU]) {
 	strcpy(title, getClientTitleBySocket(socket));
 	struct topic *tmpTopic = getTopicByTitle(title);
 	//Tu dung nghi ra, ham invite viet kho vc
+}
+
+void sendListOnline(int socket){
+	struct client *tmpClient;
+	char buffer[DATA_SIZE] = "0List user online:";
+
+	for (tmpClient = clients; tmpClient != NULL; tmpClient = tmpClient->next) {
+		strcat(buffer, "\n");
+		strcat(buffer, tmpClient->username);
+	}
+	write(socket, buffer, strlen(buffer));
+}
+
+void sendListUser(int socket){
+	struct topic *tmpTopic = getTopicByTitle(getClientTitleBySocket(socket));
+	char buffer[DATA_SIZE] = "0List user in this topic:";
+	int i;
+	for (i = 0 ; i < tmpTopic->countMember ; i++){
+		strcat(buffer, "\n");
+		strcat(buffer, getClientUsernameBySocket(tmpTopic->member[i]));
+	}
+	write(socket, buffer, strlen(buffer));
 }
