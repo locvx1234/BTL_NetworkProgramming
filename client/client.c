@@ -18,9 +18,10 @@
 #define MTU 1200
 #define PORT 5000
 
+
 void *send_handler(void *sock);
 void *receive_handler(void *sock);
-void * sendfile(void * sock);
+void sendfile(int sock);
 void downfile(int sock);
 void *get_in_addr(struct sockaddr *sa);
 
@@ -86,14 +87,15 @@ void *send_handler(void *socket) {
 	puts("Connected\n");
 	puts("List Main Menu");
 	puts("-------------------------------------------------------------------------------------------");
-	puts("|'@exit' to quit							'@create' to create new topic		|");
-	puts("|'@s' to send File						'@join' to join a existed topic		|");
-	puts("|'@f' to download File				'@listonline' to list all users online	|");
-	puts("|'@listtopic' to list all topic'			'@listuser' to list...				|");
+	puts("Import:")
+	puts("|1.'@exit' to quit							5.'@create' to create new topic				|");
+	puts("|2.'@upfile' to send File						6.'@join' to join a existed topic			|");
+	puts("|3.'@downfile' to download File				7.'@listonline' to list all users online	|");
+	puts("|4.'@listtopic' to list all topic'			8.'@listuser' to list...					|");
 
 	puts("===========================================================================================");
 	puts("Connected Chat");
-	printf("Me				Myfriend\n");
+	printf("Me						Myfriend\n");
 	printf("=======================================================================================\n");
 	
 	//Nhap va xu ly message
@@ -157,9 +159,6 @@ void *send_handler(void *socket) {
 				    memset(&buff, sizeof(buff), 0);
 				}   
 			}
-		
-	
-    
 	return 0;
 }
 
@@ -183,21 +182,20 @@ void *receive_handler(void *connfd) {
 }
 //sendfile from client to server
 //editting...
-void * sendfile(void * sock){
-	int connfd = *(int*)sock;
+void sendfile(int sock){
 	char fileName[256];
 	scanf("%s", fileName);
 	bzero(fileName,256);
 	while(1){
-			write(connfd, fileName, 256);
+			write(sock, fileName, 256);
             printf("\nClient want to sendfile : %s. \n", fileName);
             
             FILE *fp;
         	fp = fopen(fileName,"rb");
             if(fp==NULL){
 		        printf("File open error or not exist file.\n");
-		        write(connfd, "error", sizeof("error"));
-                continue;
+		        write(sock, "error", sizeof("error"));
+                exit(1);
             }else{
  				int nread;
     // send content file
@@ -205,7 +203,7 @@ void * sendfile(void * sock){
         		do{
     /* Read file in chunks of 256 bytes */
 		    		nread=fread(contentFile, 1, 256, fp);
-		    		write(connfd, contentFile, nread);
+		    		write(sock, contentFile, nread);
         		}while(nread >= sizeof(contentFile));
 
 		        if (nread < 256){
@@ -218,18 +216,18 @@ void * sendfile(void * sock){
             	fclose(fp);
         }
 }
-//downloadfile from server funtion
+//downloadfile from server
 void downfile(int socket) {
     int bytesReceived = 0;
     char recvBuff[256], fileName[256];
     memset(recvBuff, '0', sizeof(recvBuff));
 	while(1){
         	memset(recvBuff, 0, sizeof(recvBuff));
-		printf("\nEnter file name to download: ");
-		scanf("%s", fileName);
+			printf("\nEnter file name to download: ");
+			scanf("%s", fileName);
         	fflush(stdin);
-		printf("Request file : %s to server.\n", fileName);
-		write(socket, fileName, sizeof(fileName));
+			printf("Request file : %s to server.\n", fileName);
+			write(socket, fileName, sizeof(fileName));
 	        if(strcmp(fileName,"@") == 0){
 	        	printf("outting downloadfile!\n");
 		    	break;
@@ -237,22 +235,22 @@ void downfile(int socket) {
         
     		FILE *fp;	    
     		fp = fopen(fileName, "wb"); 
-	   	do {
-			  memset(recvBuff, 0, sizeof(recvBuff));
-		  	  bytesReceived=read(socket, recvBuff, sizeof(recvBuff));
-		  	  //printf("%d", bytesReceived);
-			  if(strcmp(recvBuff,"error") == 0){
-		      		memset(recvBuff, 0, sizeof(recvBuff));
-		      		printf("File name doesn't exist in your server or invalid. \n");
-		      	  	continue;
-		          }
-			  else{
-		          //printf("Bytes received %d\n",bytesReceived);
-		          	fwrite(recvBuff, 1,bytesReceived,fp);
-               		  }
-	   	}while(bytesReceived >= 256);
+		   	do {
+				  memset(recvBuff, 0, sizeof(recvBuff));
+			  	  bytesReceived=read(socket, recvBuff, sizeof(recvBuff));
+			  	  //printf("%d", bytesReceived);
+				  if(strcmp(recvBuff,"error") == 0){
+			      		memset(recvBuff, 0, sizeof(recvBuff));
+			      		printf("File name doesn't exist in your server or invalid. \n");
+			      	  	continue;
+			          }
+				  else{
+			          //printf("Bytes received %d\n",bytesReceived);
+			          	fwrite(recvBuff, 1,bytesReceived,fp);
+	               		  }
+		   	}while(bytesReceived >= 256);
 	   
-	   	fclose(fp);
+	   		fclose(fp);
      
 	        if(bytesReceived < 0){
 		    printf("Read Error \n");
