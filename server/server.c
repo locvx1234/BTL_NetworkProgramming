@@ -81,6 +81,9 @@ void sendListUser(int socket);
 //
 void sendListTopic(int socket);
 
+//
+void sendListFile(int socket);
+
 //Ham lay list file co trong folder
 int buildListFileInFolder(char *listFile[], const char *path);
 
@@ -259,7 +262,7 @@ static void *doit(void *socket) {
 		} else if (command == '4') {		//@listuser. Gui danh sach nhung user co mat trong cung room chat
 			sendListUser(connfd);
 		} else if (command == '5') {		//@listfile. Gui danh sach nhung file da duoc upload len trong room chat
-			//
+			sendListFile(connfd);
 		} else if (command == '6') {		//@listtopic. Gui danh sach nhung topic hien co.
 			sendListTopic(connfd);
 		} else if (command == '7') {
@@ -530,6 +533,25 @@ void sendListTopic(int socket){
 	for (tmpTopic = topics; tmpTopic != NULL; tmpTopic = tmpTopic->next) {
 		strcat(buffer, "\n");
 		strcat(buffer, tmpTopic->title);
+	}
+	write(socket, buffer, strlen(buffer));
+}
+
+void sendListFile(int socket){
+	struct topic *tmpTopic = getTopicByTitle(getClientTitleBySocket(socket));
+	char buffer[DATA_SIZE] = "0List file in this topic:";
+	char *path = tmpTopic->title;
+	// strcat(path, tmpTopic->title);
+	DIR *d = opendir(path);
+	
+	if (d) {
+		struct dirent *dir;
+		while ((dir = readdir(d)) != NULL) {
+			if (!strcmp(dir->d_name, ".") || !strcmp(dir->d_name, "..")) continue;
+			strcat(buffer, "\n");
+			strcat(buffer, dir->d_name);
+		}
+		closedir(d);
 	}
 	write(socket, buffer, strlen(buffer));
 }
