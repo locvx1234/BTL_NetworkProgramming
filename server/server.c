@@ -39,8 +39,11 @@ void clientCreate(int socket, char username[NAME_SIZE]);
 //Ham them client dang online vao danh sach client trong room chat
 void clientJoin(int socket, char title[NAME_SIZE]);
 
-//
+// Khi mot client gia nhap topic
 int joinRoom(int socket, char title[NAME_SIZE]);
+
+// Khi mot client thoat khoi topic 
+void outRoom(int socket);
 
 //Ham xoa client, chi goi den khi client gui command @exit (lenh so 9)
 struct client *clientDelete(int socket);
@@ -268,7 +271,7 @@ static void *doit(void *socket) {
 		} else if (command == '7') {
 			// module unused
 		} else if (command == '8') {		//@out. Client thoat khoi room chat hien tai.
-			//
+			outRoom(connfd);
 		} else if (command == '9') {		//@exit. Client 
 			//
 		} else if (command == 'a') {		//@chat
@@ -314,6 +317,31 @@ int joinRoom(int socket, char title[NAME_SIZE]) {
 		tmpTopic->countMember++;
 		return 0;	//0 nghia la join thanh cong roi
 	}
+}
+
+void outRoom(int socket){
+	struct topic *tmpTopic = getTopicByTitle(getClientTitleBySocket(socket));
+	struct client *tmpClient = getClientByName(getClientUsernameBySocket(socket));
+
+	if (tmpTopic->countMember == 1){
+		topicDelete(tmpTopic->title);
+	} else {
+		int i;
+		for (i=0; i < tmpTopic->countMember; i++){
+			if (tmpTopic->member[i] == socket ){
+				while(i < tmpTopic->countMember-1){
+					tmpTopic->member[i] = tmpTopic->member[i+1];
+					i++;
+				}
+				tmpTopic->member[i] = 0;
+				break;
+			}
+		}
+		tmpTopic->countMember--;
+
+	}
+
+	strcpy(tmpClient->title, "");
 }
 
 struct client *clientDelete(int socket) {
