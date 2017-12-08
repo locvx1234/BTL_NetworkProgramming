@@ -7,7 +7,6 @@
 #include <sys/socket.h>	// ??
 #include <unistd.h>	//write, read, close
 #include <pthread.h>	//pthread_create, pthread_detach
-//
 #include <errno.h>
 #include <netdb.h>
 #include <sys/select.h>
@@ -18,16 +17,20 @@
 #define MTU 1200
 #define PORT 5000
 
-
+//Ham gui thong bao mess
 void *send_handler(void *sock);
+//Ham nhan thong bao mess
 void *receive_handler(void *sock);
+//Ham gui file cho server
 void sendfile(int sock);
+Ham download file tu server
 void downfile(int sock);
+//Ham in dia chi
 void *get_in_addr(struct sockaddr *sa);
 
 //Global Variable
 unsigned char status = 0;	//0 la o ngoai room chat, 1 la da vao trong room chat
-
+//Ham Main
 int main(int argc, char *argv[]) {
 	if (argc != 2) {
 		fprintf(stdin, "Enter IPv4 Address\n");
@@ -39,6 +42,8 @@ int main(int argc, char *argv[]) {
 	if (sockfd < 0) {
 		perror("Error when create!\n");
 		exit(1);
+	}else {
+		printf("Created Socket...\n");	
 	}
 
 	//Initialize sockaddr_in data structure
@@ -84,7 +89,7 @@ int main(int argc, char *argv[]) {
 
 void *send_handler(void *socket) {
 	//Tao giao dien
-	puts("Connected\n");
+	puts("Connected for Chat\n");
 	puts("List Main Menu");
 	puts("-------------------------------------------------------------------------------------------");
 	puts("Import:")
@@ -94,8 +99,8 @@ void *send_handler(void *socket) {
 	puts("|4.'@listtopic' to list all topic'			8.'@listuser' to list...					|");
 
 	puts("===========================================================================================");
-	puts("Connected Chat");
-	printf("Me						Myfriend\n");
+	puts("Import for Chat");
+	//printf("Me						Myfriend\n");
 	printf("=======================================================================================\n");
 	
 	//Nhap va xu ly message
@@ -223,15 +228,16 @@ void downfile(int socket) {
     memset(recvBuff, '0', sizeof(recvBuff));
 	while(1){
         	memset(recvBuff, 0, sizeof(recvBuff));
-			printf("\nEnter file name to download: ");
+			printf("\nImport NameFile to download: ");
 			scanf("%s", fileName);
         	fflush(stdin);
 			printf("Request file : %s to server.\n", fileName);
 			write(socket, fileName, sizeof(fileName));
+			/*
 	        if(strcmp(fileName,"@") == 0){
 	        	printf("outting downloadfile!\n");
 		    	break;
-	    	}
+	    	}*/
         
     		FILE *fp;	    
     		fp = fopen(fileName, "wb"); 
@@ -253,7 +259,7 @@ void downfile(int socket) {
 	   		fclose(fp);
      
 	        if(bytesReceived < 0){
-		    printf("Read Error \n");
+		    	printf("Read Error \n");
 	        }   	
 	}
 	

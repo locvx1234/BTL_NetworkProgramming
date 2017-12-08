@@ -212,9 +212,9 @@ int main(int argc, char **argv) {
 //             fp = fopen(filename,"rb");
 //             if(fp==NULL)
 //             {
-//                 printf("File open error or not exist file.\n");
-//                 write(connfd, "error", sizeof("error"));
-//                     continue;
+//                 	printf("File open error or not exist file.\n");
+//                 	write(connfd, "error", sizeof("error"));
+//                  continue;
 //             }else{
  
 //             int nread;
@@ -222,8 +222,8 @@ int main(int argc, char **argv) {
 //             char contentfile[255] = {0};
 //             do{
 //             /* Read file in chunks of 256 bytes */
-// 		    nread=fread(contentfile, 1, 256, fp);
-// 		    write(connfd, contentfile, nread);
+// 		    		nread=fread(contentfile, 1, 256, fp);
+// 		    		write(connfd, contentfile, nread);
 //             }while(nread >= sizeof(contentfile));
 
 //             	if (nread < 256){
