@@ -39,6 +39,9 @@ void clientCreate(int socket, char username[NAME_SIZE]);
 //Ham them client dang online vao danh sach client trong room chat
 void clientJoin(int socket, char title[NAME_SIZE]);
 
+// Khi mot client thoat khoi chuong trinh
+void clientExit(int socket);
+
 // Khi mot client gia nhap topic
 int joinRoom(int socket, char title[NAME_SIZE]);
 
@@ -273,7 +276,7 @@ static void *doit(void *socket) {
 		} else if (command == '8') {		//@out. Client thoat khoi room chat hien tai.
 			outRoom(connfd);
 		} else if (command == '9') {		//@exit. Client 
-			//
+			clientExit(connfd);
 		} else if (command == 'a') {		//@chat
 			clientChat(connfd, message);
 		} else if (command == 'b') {		//@upfile
@@ -304,6 +307,13 @@ void clientJoin(int socket, char title[NAME_SIZE]) {
 	} else if (check == 0) {
 		write(socket, "0", 1);	//0 nghia la join thanh cong roi
 	}
+}
+
+void clientExit(int socket){
+	if( strcmp(getClientTitleBySocket(socket), "") != 0 ){
+		outRoom(socket);
+	} 
+	clientDelete(socket);
 }
 
 int joinRoom(int socket, char title[NAME_SIZE]) {
@@ -338,7 +348,6 @@ void outRoom(int socket){
 			}
 		}
 		tmpTopic->countMember--;
-
 	}
 
 	strcpy(tmpClient->title, "");
