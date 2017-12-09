@@ -57,7 +57,6 @@ void sendListOnline( int sockfd );									//3
 void sendListUser( int sockfd );									//4
 void sendListFile( int sockfd );									//5
 void sendListTopic( int sockfd );									//6
-void sendHelp( int sockfd, char message[MTU]);										//7
 void clientOut( int sockfd );										//8
 void clientExit( int sockfd );										//9
 void getFileFromClient( int sockfd, char filename[NAME_SIZE] );		//b
@@ -167,8 +166,8 @@ static void *doit( void *connfd ) {
 		else if( command == '6' ) {		//@listtopic. Gui danh sach nhung topic hien co.
 			sendListTopic(sockfd);
 		}
-		else if( command == '7' ) {		//@help
-			sendHelp(sockfd, message);
+		else if( command == '7' ) {		
+			// unused
 		}
 		else if( command == '8' ) {		//@out. Client thoat khoi room chat hien tai.
 			clientOut(sockfd);
@@ -460,20 +459,6 @@ void sendListTopic( int sockfd ) {
 		}
 	}
 	write(sockfd, message, strlen(message));
-}
-
-void sendHelp( int sockfd, char message[MTU] ) {
-	char buffer[MTU];
-	if( message[0] == '0' ) {
-		strcpy(buffer, "Main menu command:\n---@create <topic name>\n---@join <topic name>");
-		strcpy(buffer, "\n---@listonline\n---@listtopic\n---@help\n---@exit\n");
-	}
-	else if( message[0] == '1' ) {
-		strcpy(buffer, "Topic command:\n---@invite <client name 1> <client name 2> ...");
-		strcpy(buffer, "\n---@listonline\n---@listuser\n---@listfile\n---@listtopic");
-		strcpy(buffer, "\n---@help\n---@out\n---@exit\n");
-	}
-	write(sockfd, buffer, strlen(buffer));
 }
 
 void clientOut( int sockfd ) {
