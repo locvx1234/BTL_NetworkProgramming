@@ -500,7 +500,7 @@ void clientOut( int sockfd ) {
 }
 
 void clientExit( int sockfd ) {
-	if( strcmp(getClientTitleBySocket(socket), "") != 0 ){
+	if( strcmp(getClientBySocket(sockfd)->title, "") != 0 ){
 			clientOut(sockfd);
 	}
 	deleteClient(sockfd);
