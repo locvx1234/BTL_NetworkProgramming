@@ -320,16 +320,19 @@ void createTopic( int sockfd, char title[NAME_SIZE] ) {
 		char message[MTU] = "0Topic name is already existed!";
 		write(sockfd, message, strlen(message));
 	} else {
+		char message[MTU] = "";
 		tmpTopic = (Topic *)malloc(sizeof(Topic));
 		strcpy(tmpTopic->title, title);
 		char path[NAME_SIZE+4] = "./";
-		mkdir(strcat(path,title), 0777);
+		mkdir(strcat(path,title), 0777);		
 		tmpTopic->member[0] = sockfd;
 		tmpTopic->countMember = 1;
 		tmpTopic->countFile = 0;
 		tmpTopic->next = topics;
 		topics = tmpTopic;
 		printf("Topic %s created!\n", title);
+		sprintf(message, "2%s", title);
+		write(sockfd, message, strlen(message));
 	}
 }
 
@@ -366,9 +369,9 @@ void inviteClient( int sockfd, char message[MTU] ) {
 		if( targetClient != NULL ){
 			if( strcmp(targetClient->title, "") == 0 ) {
 				int check = joinRoom(targetClient->sockfd, tmpTopic->title);
-				if( check == 0 ) {
+				if( check == 0 ) {			// invite success
 					sprintf(buffer, "1%s", tmpTopic->title);
-					write(targetClient->sockfd, buffer, strlen(buffer));
+					write(targetClient->sockfd, buffer, strlen(buffer));				
 					memset(buffer, 0, sizeof(buffer));
 					sprintf(buffer, "0Invite %s success!", targetName);
 				} else if (check == 2) {	//Neu room full nguoi
@@ -384,7 +387,7 @@ void inviteClient( int sockfd, char message[MTU] ) {
 		} else {
 			sprintf(buffer, "0%s doesn't exist!", targetName);
 		}
-		write(sockfd, buffer, strlen(buffer));
+		write(sockfd, buffer, strlen(buffer));			// loc : co the gay ra bug  
         targetName = strtok(NULL, " ");
     }
 }
@@ -497,7 +500,9 @@ void clientOut( int sockfd ) {
 }
 
 void clientExit( int sockfd ) {
-	clientOut(sockfd);
+	if( strcmp(getClientTitleBySocket(socket), "") != 0 ){
+			clientOut(sockfd);
+	}
 	deleteClient(sockfd);
 	close(sockfd);
 }
