@@ -20,12 +20,13 @@
 #define	SA 			struct sockaddr
 
 //Function Declare
-void *send_handler( void *connfd );
-void *receive_handler( void *connfd );
+static void *send_handler( void *connfd );
+static void *receive_handler( void *connfd );
 void sendCommand( int sockfd, char command[2], int skip, char buffer[DATA_SIZE]);
 void sendFile( int sockfd, char fileName[NAME_SIZE] );
 void downFile( int sockfd, char fileName[NAME_SIZE] );
-
+void showMainMenu();
+void showTopicMenu();
 //Global Variable
 char username[NAME_SIZE], title[NAME_SIZE] = "", message[MTU];
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -79,11 +80,11 @@ int main( int argc, char *argv[] ) {
 		}
 	}
 
-	pthread_t send, recvt;
-  	pthread_create(&recvt, NULL, receive_handler, &connfd);
-	pthread_create(&send, NULL, send_handler, &connfd);
-	pthread_join(recvt, NULL);
-	pthread_join(send, NULL);
+	pthread_t send_tid, recv_tid;
+  	pthread_create(&recv_tid, NULL, &receive_handler,(void *) &connfd);
+	pthread_create(&send_tid, NULL, &send_handler,(void *) &connfd);
+	pthread_join(recv_tid, NULL);
+	pthread_join(send_tid, NULL);
 	
 	close(connfd);
 	return 0;
@@ -105,20 +106,39 @@ int main( int argc, char *argv[] ) {
 	close(connfd);
 	return 0;*/
 }
+void showMainMenu(){
+		//Interface
+	puts("List Main Menu");
+	puts("-----------------------------------------------------------");
+	puts("| @create <topic name>	: create new topic 				|");
+	puts("| @join <topic name>		: join an existed topic 		|");
+	puts("| @listonline				: show all users online			|");
+	puts("| @listtopic				: show all existed topics		|");
+	puts("| @help					: show all commands available	|");
+	puts("| @exist 					: exit program					|");
+	puts("-----------------------------------------------------------");
+}
 
-void *send_handler( void *connfd ) {
+void showTopicMenu(){
+	puts("List Topic Menu");
+	puts("---------------------------------------------------------------");
+	puts("| @invite <username>			: invite an user 				|");
+	puts("| @listonline					: show all users online			|");
+	puts("| @listuser					: show all users in topic		|");
+	puts("| @listfile					: show all files in topic		|");
+	puts("| @listtopic					: show all existed topics		|");	
+	puts("| @help						: show all commands available	|");
+	puts("| @out						: leave the topic				|");
+	puts("| @exit						: exit program					|");
+	puts("| @upfile	<filename>			: upload a file to topic		|");
+	puts("| @downfile <filename>		: download a file from topic	|");
+	puts("---------------------------------------------------------------");
+}
+
+static void *send_handler( void *connfd ) {
 	int sockfd = *((int*)connfd);
 
-	//Interface
-	puts("List Main Menu");
-	puts("---------------------------------------------------------------");
-	puts("| @create <topic name>		: create new topic				|");
-	puts("| @join <topic name>			: join an existed topic			|");
-	puts("| @listonline					: show all user online			|");
-	puts("| @listtopic					: show all existed topic		|");
-	puts("| @help						: show all command	 			|");
-	puts("| @exit						: exit program					|");
-	puts("---------------------------------------------------------------");
+	showMainMenu();
 	printf("\nMain>");
 
 	//Nhap va xu ly message
@@ -146,7 +166,8 @@ void *send_handler( void *connfd ) {
 				write(sockfd, "6", 1);
 			}
 			else if( strcmp(command, "@help") == 0 ) {			//Command help = 7
-				write(sockfd, "70", 2);
+				// write(sockfd, "70", 2);
+				showMainMenu();
 			}
 			else if( strcmp(command, "@exit") == 0 ) {			//Command exit = 9
 				write(sockfd, "9", 1);
@@ -173,7 +194,7 @@ void *send_handler( void *connfd ) {
 				write(sockfd, "6", 1);
 			}
 			else if( strcmp(command, "@help") == 0 ) {			//Command help = 7
-				write(sockfd, "71", 2);
+				showTopicMenu();
 			}
 			else if( strcmp(command, "@out") == 0 ) {			//Command out = 8
 				write(sockfd, "8", 1);
@@ -203,12 +224,13 @@ void *send_handler( void *connfd ) {
 }
 
 //revcmessage thread function
-void *receive_handler( void *connfd ) {
+static void *receive_handler( void *connfd ) {
 	int sockfd = *((int*)connfd);
 	
-	for( ; ; ) {
-		memset(message, 0, sizeof(message));
-		read(sockfd, message, sizeof(message));
+	while( read(sockfd, message, sizeof(message)) > 0 ) {
+		// printf("Messafe %s xx\n", message );
+		// printf("Size %d\n", sizeof(message));
+		// printf("Strlen %d\n", strlen(message) );
 		char command = message[0];
 		strncpy(message, message+1, strlen(message));
 		if( command == '0' ) {			//0 tuc la nhan message thong thuong
@@ -223,14 +245,17 @@ void *receive_handler( void *connfd ) {
 			printf( "\nYou have been invited to topic %s\n%s>", title, title );
 		}
 		else if (command == '2') {		//2 tuc la tu minh join room thanh cong
-			strcpy(title, message);
-			printf( "You are now in topic %s\n%s>", title, title);
+			// strcpy(title, message);
+			printf("co in nra ko thi bao\n ");
+			printf( "You are now in topic %s \n", title);
+			printf("%s >", title);
 		}
 		else if (command == '3') {		//3 tuc la server chuan bi gui file cho minh
 			pthread_mutex_lock(&mutex);
 			downFile(sockfd, message);
 			pthread_mutex_unlock(&mutex);
 		}
+		memset(message, 0, sizeof(message));
 	}
 	return 0;
 }
