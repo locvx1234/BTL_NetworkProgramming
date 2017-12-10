@@ -1,5 +1,5 @@
 #include <stdio.h>	//printf
-#include <string.h>	//strcpy, strcmp, strncpy, strtok
+#include <string.h>	//strcpy, strcmp, strncpy, strtok, strstr, strcat
 #include <stdlib.h>	//exit, malloc
 #include <netinet/in.h>	// ??
 #include <arpa/inet.h>	//inet_ntop
@@ -12,6 +12,7 @@
 #include <sys/select.h>
 #include <sys/time.h>
 
+<<<<<<< HEAD
 #define NAME_SIZE 32
 #define DATA_SIZE 1024
 #define MTU 1200
@@ -27,23 +28,41 @@ void sendfile(int sock);
 void downfile(int sock);
 //Ham in dia chi
 void *get_in_addr(struct sockaddr *sa);
+=======
+//Static Define
+#define NAME_SIZE	32
+#define DATA_SIZE	1024
+#define MTU 		1200
+#define PORT 		5000
+#define	SA 			struct sockaddr
+>>>>>>> 8f0f0adead44017d6121dbcbb1417fe323a36aba
 
+//Function Declare
+static void *send_handler( void *connfd );
+static void *receive_handler( void *connfd );
+void sendCommand( int sockfd, char command[2], int skip, char buffer[DATA_SIZE]);
+void sendFile( int sockfd, char fileName[NAME_SIZE] );
+void downFile( int sockfd, char fileName[NAME_SIZE] );
+void showMainMenu();
+void showTopicMenu();
 //Global Variable
-unsigned char status = 0;	//0 la o ngoai room chat, 1 la da vao trong room chat
-//Ham Main
-int main(int argc, char *argv[]) {
-	if (argc != 2) {
-		fprintf(stdin, "Enter IPv4 Address\n");
+char username[NAME_SIZE], title[NAME_SIZE] = "", message[MTU];
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+
+//Main Function
+int main( int argc, char *argv[] ) {
+	if( argc != 2 ) {
+		fprintf( stdin, "Enter IPv4 Address\n" );
 		exit(1);
 	}
     
 	//Create a socket
-	int sockfd = socket(AF_INET, SOCK_STREAM, 0);
-	if (sockfd < 0) {
-		perror("Error when create!\n");
+	int connfd = socket(AF_INET, SOCK_STREAM, 0);
+	if( connfd < 0 ) {
+		perror( "Error when create!\n" );
 		exit(1);
 	}else {
-		printf("Created Socket...\n");	
+		printf( "Socket created...\n" );	
 	}
 
 	//Initialize sockaddr_in data structure
@@ -52,45 +71,63 @@ int main(int argc, char *argv[]) {
 	serv_addr.sin_addr.s_addr = inet_addr(argv[1]);
 	serv_addr.sin_port = htons(PORT);
 
-	puts("Connecting...\n");
+	puts( "Connecting..." );
 	
-
 	//Attempt a connection
-	if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr))<0) {
-		perror("Error: Connect Failed \n");
+	if( connect(connfd, (SA*)&serv_addr, sizeof(serv_addr))<0 ) {
+		perror( "Error: Connect Failed \n" );
 		exit(1);
 	} else {
-		puts("Connected\n");
+		puts( "Connected\n" );
 	}
 	
-	char username[NAME_SIZE];
-	puts("Import username:");
-	fgets(username, sizeof(username), stdin);
-	fflush(stdin);
-	write(sockfd, username, sizeof(username));
+	for( ; ; ) {
+		printf( "Import username: " );
+		fgets(username, sizeof(username), stdin);
+		fflush(stdin);
+		if (username[strlen(username)-1] == '\n' || username[strlen(username)-1] == '\r')
+			username[strlen(username)-1] = '\0';
+		write(connfd, username, strlen(username));
+		memset(message, 0, sizeof(message));
+		read(connfd, message, sizeof(message));
+		if( strcmp(message, "Duplicate") == 0 ) {
+			puts( "Notification from server: Username is duplicate!\n" );
+		} else {
+			puts( "Username accepted! You're online now!" );
+			break;
+		}
+	}
+
+	pthread_t send_tid, recv_tid;
+  	pthread_create(&recv_tid, NULL, &receive_handler,(void *) &connfd);
+	pthread_create(&send_tid, NULL, &send_handler,(void *) &connfd);
+	pthread_join(recv_tid, NULL);
+	pthread_join(send_tid, NULL);
 	
-	pthread_t send, recv;
-	if (pthread_create(&recv, NULL, receive_handler, &sockfd) < 0) {   
-		perror("Could not create thread receive");
+	close(connfd);
+	return 0;
+
+	/*pthread_t send, recv;
+	if( pthread_create(&recv, NULL, receive_handler, &connfd) < 0 ) {   
+		perror( "Could not create thread receive" );
 		exit(1);
 	} else {
 		pthread_join(recv, NULL);
 	}
-	if (pthread_create(&send, NULL, send_handler, &sockfd) < 0) {   
-		perror("Could not create thread send");
+	if( pthread_create(&send, NULL, send_handler, &connfd) < 0 ) {   
+		perror( "Could not create thread send" );
 		exit(1);
 	} else {
 		pthread_join(send, NULL);
 	}
 	
-	close(sockfd);
-	return 0;
+	close(connfd);
+	return 0;*/
 }
-
-void *send_handler(void *socket) {
-	//Tao giao dien
-	puts("Connected for Chat\n");
+void showMainMenu(){
+		//Interface
 	puts("List Main Menu");
+<<<<<<< HEAD
 	puts("-------------------------------------------------------------------------------------------");
 	puts("Import:")
 	puts("|1.'@exit' to quit							6.'@create' to create new topic				|");
@@ -115,102 +152,200 @@ void *send_handler(void *socket) {
 				puts("Import Topic's name:");
 
 			} else if (strcmp(buffer, "@join")) {		//2
+=======
+	puts("-----------------------------------------------------------");
+	puts("| @create <topic name>	: create new topic 				|");
+	puts("| @join <topic name>		: join an existed topic 		|");
+	puts("| @listonline				: show all users online			|");
+	puts("| @listtopic				: show all existed topics		|");
+	puts("| @help					: show all commands available	|");
+	puts("| @exist 					: exit program					|");
+	puts("-----------------------------------------------------------");
+}
+>>>>>>> 8f0f0adead44017d6121dbcbb1417fe323a36aba
 
-			} else if (strcmp(buffer, "@listonline")) {	//3
-
-			} else if (strcmp(buffer, "@listtopic")) {	//6
-
-			} else if (strcmp(buffer, "@exit")) {		//9
-
-			}
-		} else {					//Client dang o trong room chat
-			if (strcmp(buffer, "@invite")) {		//1
-
-			} else if (strcmp(buffer, "@listonline")) {	//3
-
-			} else if (strcmp(buffer, "@listuser")) {	//4
-
-			} else if (strcmp(buffer, "@listfile")) {	//5
-
-			} else if (strcmp(buffer, "@listtopic")) {	//6
-			
-			} else if (strcmp(buffer, "@out")) {		//8
-	
-			} else if (strcmp(buffer, "@exit")) {		//9
-			
-			} else if (strcmp(buffer, "@upfile")) {		//b
-
-			} else if (strcmp(buffer, "@downfile")) {	//c
-
-			} else {					//a chat
-				int count = 0;
-				while(count < strlen(username))
-				{
-				    message[count] = username[count];
-				    count++;
-				}
-				count--;
-				message[count] = ':';
-				count++;
-				for(int i = 0; i < strlen(buff); i++)
-				{
-				    message[count] = buff[i];
-				    count++;
-				}
-				message[count] = '\0';
-				if(send(socket, message, strlen(message), 0) < 0)
-				{
-				    puts("Send failed");
-				    exit(1);
-				}
-				    memset(&buff, sizeof(buff), 0);
-				}   
-			}
-	return 0;
+void showTopicMenu(){
+	puts("List Topic Menu");
+	puts("---------------------------------------------------------------");
+	puts("| @invite <username>			: invite an user 				|");
+	puts("| @listonline					: show all users online			|");
+	puts("| @listuser					: show all users in topic		|");
+	puts("| @listfile					: show all files in topic		|");
+	puts("| @listtopic					: show all existed topics		|");	
+	puts("| @help						: show all commands available	|");
+	puts("| @out						: leave the topic				|");
+	puts("| @exit						: exit program					|");
+	puts("| @upfile	<filename>			: upload a file to topic		|");
+	puts("| @downfile <filename>		: download a file from topic	|");
+	puts("---------------------------------------------------------------");
 }
 
-//revcmessage thread function
-void *receive_handler(void *connfd) {
-	int socket = *((int*)connfd), nbytes;
-	char message[MTU];
-	
-	for (;;) {
-		memset(message, 0, sizeof(message));
-		read(socket, message, sizeof(message));
-		char command = message[0];
-		strncpy(message, message+1, strlen(message));
-		if (command == '0') {		//nhan message
-			puts(message);
-		} else if (command == '1') {	//nhan file 
-			downfile(socket, message);
+static void *send_handler( void *connfd ) {
+	int sockfd = *((int*)connfd);
+
+	showMainMenu();
+	printf("\nMain>");
+
+	//Nhap va xu ly message
+	char buffer[DATA_SIZE];
+	for( ; ; ) {
+		memset(buffer, 0, sizeof(buffer));
+		fgets(buffer, sizeof(buffer), stdin);	//Client nhap lenh, hoac nhap cau chat
+		fflush(stdin);
+		if (buffer[strlen(buffer)-1] == '\n' || buffer[strlen(buffer)-1] == '\r')
+			buffer[strlen(buffer)-1] = '\0';
+		char command[DATA_SIZE];
+		strcpy(command, buffer);
+		strtok(command, " ");
+		if( strcmp(title, "") == 0 ) {			//Client chua tham gia room chat
+			if( strcmp(command, "@create" ) == 0 ) {				//Command create = 0
+				sendCommand(sockfd, "0", 8, buffer);
+			}
+			else if( strcmp(command, "@join") == 0 ) {			//Command join = 2
+				sendCommand(sockfd, "2", 6, buffer);
+			}
+			else if( strcmp(command, "@listonline") == 0 ) {		//Command listonline = 3
+				write(sockfd, "3", 1);
+			}
+			else if( strcmp(command, "@listtopic") == 0 ) {		//Command listtopic = 6
+				write(sockfd, "6", 1);
+			}
+			else if( strcmp(command, "@help") == 0 ) {			//Command help = 7
+				// write(sockfd, "70", 2);
+				showMainMenu();
+			}
+			else if( strcmp(command, "@exit") == 0 ) {			//Command exit = 9
+				write(sockfd, "9", 1);
+				exit(1);
+			}
+			else {
+				printf( "--Invalid Command. Please type @help for more information.\nMain>" );
+			}
+		}
+		else {								//Client dang o trong room chat
+			if( strcmp(command, "@invite") == 0 ) {				//Command invite = 1
+				sendCommand(sockfd, "0", 8, buffer);
+			}
+			else if( strcmp(command, "@listonline") == 0 ) {	//Command listonline = 3
+				write(sockfd, "3", 1);
+			}
+			else if( strcmp(command, "@listuser") == 0 ) {		//Command listuser = 4
+				write(sockfd, "4", 1);
+			}
+			else if( strcmp(command, "@listfile") == 0 ) {		//Command listfile = 5
+				write(sockfd, "5", 1);
+			}
+			else if( strcmp(command, "@listtopic") == 0 ) {		//Command listtopic = 6
+				write(sockfd, "6", 1);
+			}
+			else if( strcmp(command, "@help") == 0 ) {			//Command help = 7
+				showTopicMenu();
+			}
+			else if( strcmp(command, "@out") == 0 ) {			//Command out = 8
+				write(sockfd, "8", 1);
+				strcpy(title, "");
+			}
+			else if( strcmp(command, "@exit") == 0 ) {			//Command exit = 9
+				write(sockfd, "9", 1);
+				exit(1);
+			}
+			else if( strcmp(command, "@upfile") == 0 ) {		//Command upfile = b
+				printf("Chuc nang chua hoan thien!\n");
+			}
+			else if( strcmp(command, "@downfile") == 0 ) {		//Command downfile = c
+				printf("Chuc nang chua hoan thien!\n");
+			}
+			else {												//Command chat = a
+				memset(message, 0, sizeof(message));
+				strcat(message, "a");
+				strcat(message, username);
+				strcat(message, ":");
+				strcat(message, buffer);
+				write(sockfd, message, strlen(message));
+			}   
 		}
 	}
 	return 0;
 }
+
+//revcmessage thread function
+static void *receive_handler( void *connfd ) {
+	int sockfd = *((int*)connfd);
+	
+	while( read(sockfd, message, sizeof(message)) > 0 ) {
+		// printf("Messafe %s xx\n", message );
+		// printf("Size %d\n", sizeof(message));
+		// printf("Strlen %d\n", strlen(message) );
+		char command = message[0];
+		strncpy(message, message+1, strlen(message));
+		if( command == '0' ) {			//0 tuc la nhan message thong thuong
+			puts(message);
+<<<<<<< HEAD
+		} else if (command == '1') {	//nhan file 
+			downfile(socket, message);
+=======
+			if( strcmp(title, "") == 0 ) {
+				printf("Main>");
+			} else {
+				printf("%s>", title);
+			}
+		} else if (command == '1') {	//1 tuc la nhan command khi bi thang ngu nao do keo vao room
+			strcpy(title, message);
+			printf( "\nYou have been invited to topic %s\n%s>", title, title );
+>>>>>>> 8f0f0adead44017d6121dbcbb1417fe323a36aba
+		}
+		else if (command == '2') {		//2 tuc la tu minh join room thanh cong
+			// strcpy(title, message);
+			printf("co in nra ko thi bao\n ");
+			printf( "You are now in topic %s \n", title);
+			printf("%s >", title);
+		}
+		else if (command == '3') {		//3 tuc la server chuan bi gui file cho minh
+			pthread_mutex_lock(&mutex);
+			downFile(sockfd, message);
+			pthread_mutex_unlock(&mutex);
+		}
+		memset(message, 0, sizeof(message));
+	}
+	return 0;
+}
+<<<<<<< HEAD
 //sendfile from client to server
 //editting...
 void sendfile(int sock, char fileName[256]){
+=======
+
+void sendCommand( int sockfd, char command[2], int skip, char buffer[DATA_SIZE]) {
+	memset(message, 0, sizeof(message));
+	strcat(message, command);
+	strncat(message, buffer + skip, strlen(buffer));
+	write(sockfd, message, strlen(message));
+}
+
+void sendFile( int sockfd, char fileName[NAME_SIZE] ) {
+	/*char fileName[256];
+>>>>>>> 8f0f0adead44017d6121dbcbb1417fe323a36aba
 	scanf("%s", fileName);
 	//fgets
 	bzero(fileName,256);
 	while(1){
-			write(sock, fileName, 256);
+			write(sockfd, fileName, 256);
             printf("\nClient want to sendfile : %s. \n", fileName);
             
             FILE *fp;
         	fp = fopen(fileName,"rb");
             if(fp==NULL){
 		        printf("File open error or not exist file.\n");
-		        write(sock, "error", sizeof("error"));
+		        write(sockfd, "error", sizeof("error"));
                 exit(1);
             }else{
  				int nread;
     // send content file
         		char contentFile[255] = {0};
         		do{
-    /* Read file in chunks of 256 bytes */
+    // Read file in chunks of 256 bytes
 		    		nread=fread(contentFile, 1, 256, fp);
-		    		write(sock, contentFile, nread);
+		    		write(sockfd, contentFile, nread);
         		}while(nread >= sizeof(contentFile));
 
 		        if (nread < 256){
@@ -221,6 +356,7 @@ void sendfile(int sock, char fileName[256]){
 		        }
             }
             	fclose(fp);
+<<<<<<< HEAD
         }
     close(sock);
 }
@@ -228,6 +364,14 @@ void sendfile(int sock, char fileName[256]){
 void downfile(int socket, char fileName[256]) {
     int bytesReceived = 0;
     char recvBuff[256];
+=======
+        }*/
+}
+
+void downFile( int sockfd, char fileName[NAME_SIZE] ) {
+    /*int bytesReceived = 0;
+    char recvBuff[256], fileName[256];
+>>>>>>> 8f0f0adead44017d6121dbcbb1417fe323a36aba
     memset(recvBuff, '0', sizeof(recvBuff));
 	while(1){
         	memset(recvBuff, 0, sizeof(recvBuff));
@@ -235,18 +379,18 @@ void downfile(int socket, char fileName[256]) {
 			scanf("%s", fileName);
         	fflush(stdin);
 			printf("Request file : %s to server.\n", fileName);
-			write(socket, fileName, sizeof(fileName));
-			/*
+			write(sockfd, fileName, sizeof(fileName));
+			
 	        if(strcmp(fileName,"@") == 0){
 	        	printf("outting downloadfile!\n");
 		    	break;
-	    	}*/
+	    	}
         
     		FILE *fp;	    
     		fp = fopen(fileName, "wb"); 
 		   	do {
 				  memset(recvBuff, 0, sizeof(recvBuff));
-			  	  bytesReceived=read(socket, recvBuff, sizeof(recvBuff));
+			  	  bytesReceived=read(sockfd, recvBuff, sizeof(recvBuff));
 			  	  //printf("%d", bytesReceived);
 				  if(strcmp(recvBuff,"error") == 0){
 			      		memset(recvBuff, 0, sizeof(recvBuff));
@@ -263,7 +407,5 @@ void downfile(int socket, char fileName[256]) {
 	        if(bytesReceived < 0){
 		    	printf("Read Error \n");
 	        }   	
-	}
-	
-	close(socket);
+	}*/
 }
