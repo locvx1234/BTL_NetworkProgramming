@@ -153,13 +153,14 @@ void showMainMenu(){
 
 			} else if (strcmp(buffer, "@join")) {		//2
 =======
+	pust("List Menu");
 	puts("-----------------------------------------------------------");
-	puts("| @create <topic name>	: create new topic 				|");
-	puts("| @join <topic name>		: join an existed topic 		|");
-	puts("| @listonline				: show all users online			|");
-	puts("| @listtopic				: show all existed topics		|");
-	puts("| @help					: show all commands available	|");
-	puts("| @exist 					: exit program					|");
+	puts("| 1.@create <topic name>	: create new topic 				|");
+	puts("| 2.@join <topic name>		: join an existed topic 		|");
+	puts("| 3.@listonline				: show all users online			|");
+	puts("| 4.@listtopic				: show all existed topics		|");
+	puts("| 5.@help					: show all commands available	|");
+	puts("| 6.@exist 					: exit program					|");
 	puts("-----------------------------------------------------------");
 }
 >>>>>>> 8f0f0adead44017d6121dbcbb1417fe323a36aba
@@ -167,16 +168,16 @@ void showMainMenu(){
 void showTopicMenu(){
 	puts("List Topic Menu");
 	puts("---------------------------------------------------------------");
-	puts("| @invite <username>			: invite an user 				|");
-	puts("| @listonline					: show all users online			|");
-	puts("| @listuser					: show all users in topic		|");
-	puts("| @listfile					: show all files in topic		|");
-	puts("| @listtopic					: show all existed topics		|");	
-	puts("| @help						: show all commands available	|");
-	puts("| @out						: leave the topic				|");
-	puts("| @exit						: exit program					|");
-	puts("| @upfile	<filename>			: upload a file to topic		|");
-	puts("| @downfile <filename>		: download a file from topic	|");
+	puts("| 1. @invite <username>			: invite an user 				|");
+	puts("| 2.@listonline					: show all users online			|");
+	puts("| 3.@listuser					: show all users in topic		|");
+	puts("| 4.@listfile					: show all files in topic		|");
+	puts("| 5.@listtopic					: show all existed topics		|");	
+	puts("| 6.@help						: show all commands available	|");
+	puts("| 7.@out						: leave the topic				|");
+	puts("| 8.@exit						: exit program					|");
+	puts("| 9.@upfile	<filename>			: upload a file to topic		|");
+	puts("| 10.@downfile <filename>		: download a file from topic	|");
 	puts("---------------------------------------------------------------");
 }
 
