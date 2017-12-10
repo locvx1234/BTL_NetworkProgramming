@@ -17,13 +17,13 @@
 #define MTU 1200
 #define PORT 5000
 
-//Ham gui thong bao mess
+//Ham gui thong bao message
 void *send_handler(void *sock);
-//Ham nhan thong bao mess
+//Ham nhan thong bao message
 void *receive_handler(void *sock);
 //Ham gui file cho server
 void sendfile(int sock);
-Ham download file tu server
+//Ham download file tu server
 void downfile(int sock);
 //Ham in dia chi
 void *get_in_addr(struct sockaddr *sa);
@@ -93,11 +93,12 @@ void *send_handler(void *socket) {
 	puts("List Main Menu");
 	puts("-------------------------------------------------------------------------------------------");
 	puts("Import:")
-	puts("|1.'@exit' to quit							5.'@create' to create new topic				|");
-	puts("|2.'@upfile' to send File						6.'@join' to join a existed topic			|");
-	puts("|3.'@downfile' to download File				7.'@listonline' to list all users online	|");
-	puts("|4.'@listtopic' to list all topic'			8.'@listuser' to list...					|");
-
+	puts("|1.'@exit' to quit							6.'@create' to create new topic				|");
+	puts("|2.'@upfile' to send File						7.'@join' to join a existed topic			|");
+	puts("|3.'@downfile' to download File				8.'@listonline' to list all users online	|");
+	puts("|4.'@listtopic' to list all topic'			9.'@listuser' to list...					|");
+	puts("|5.'@invite' to invite client for room		10.'@out' to out chat						|");
+	
 	puts("===========================================================================================");
 	puts("Import for Chat");
 	//printf("Me						Myfriend\n");
@@ -108,6 +109,7 @@ void *send_handler(void *socket) {
 	for (;;) {
 		memset(buffer, 0, sizeof(buffer));
 		fgets(buffer, sizeof(buffer), stdin);		//Client nhap lenh, hoac nhap cau chat
+		/*Cac ki tu so hoac chu ung voi cac lenh trong list menu*/
 		if (status == 0) {				//Client chua tham gia room chat
 			if (strcmp(buffer, "@create")) {			//0
 				puts("Import Topic's name:");
@@ -179,7 +181,7 @@ void *receive_handler(void *connfd) {
 		strncpy(message, message+1, strlen(message));
 		if (command == '0') {		//nhan message
 			puts(message);
-		} else if (command == '1') {	//nhan file
+		} else if (command == '1') {	//nhan file 
 			downfile(socket, message);
 		}
 	}
@@ -187,9 +189,9 @@ void *receive_handler(void *connfd) {
 }
 //sendfile from client to server
 //editting...
-void sendfile(int sock){
-	char fileName[256];
+void sendfile(int sock, char fileName[256]){
 	scanf("%s", fileName);
+	//fgets
 	bzero(fileName,256);
 	while(1){
 			write(sock, fileName, 256);
@@ -220,11 +222,12 @@ void sendfile(int sock){
             }
             	fclose(fp);
         }
+    close(sock);
 }
 //downloadfile from server
-void downfile(int socket) {
+void downfile(int socket, char fileName[256]) {
     int bytesReceived = 0;
-    char recvBuff[256], fileName[256];
+    char recvBuff[256];
     memset(recvBuff, '0', sizeof(recvBuff));
 	while(1){
         	memset(recvBuff, 0, sizeof(recvBuff));
@@ -249,11 +252,10 @@ void downfile(int socket) {
 			      		memset(recvBuff, 0, sizeof(recvBuff));
 			      		printf("File name doesn't exist in your server or invalid. \n");
 			      	  	continue;
-			          }
-				  else{
+			      }else{
 			          //printf("Bytes received %d\n",bytesReceived);
 			          	fwrite(recvBuff, 1,bytesReceived,fp);
-	               		  }
+	              }
 		   	}while(bytesReceived >= 256);
 	   
 	   		fclose(fp);
