@@ -143,7 +143,7 @@ static void *doit( void *connfd ) {
 		char command = message[0];
 		strncpy(message, message+1, strlen(message));
 		if( command == 'a' ) {		//@chat
-			char msgChat[MTU] = "a";
+			char msgChat[MTU] = "a\n";
 			strcat(msgChat, message);
 			clientSendAll(sockfd, msgChat);
 		}
@@ -412,7 +412,7 @@ void clientJoin( int sockfd, char title[NAME_SIZE] ) {
 		write(sockfd, message, strlen(message));
 		Client *tmpClient = getClientBySocket(sockfd);
 		memset(message, 0, sizeof(message));
-		sprintf(message, "0%s has join this chatroom!\n", tmpClient->username);
+		sprintf(message, "0\n%s has join this chatroom!\n", tmpClient->username);
 		clientSendAll(sockfd, message);
 	}
 }
@@ -482,7 +482,7 @@ void clientOut( int sockfd ) {
 		topics = deleteTopic(tmpTopic->title);
 	} else {
 		char buffer[DATA_SIZE];
-		sprintf(buffer, "0%s has left this chatroom!\n", tmpClient->username);
+		sprintf(buffer, "0\n%s has left this chatroom!\n", tmpClient->username);
 		clientSendAll(sockfd, buffer);
 		int i, n = tmpTopic->countMember;
 		for( i = 0; i < n; i++ ) {
