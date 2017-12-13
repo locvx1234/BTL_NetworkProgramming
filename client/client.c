@@ -27,8 +27,8 @@ void sendCommand( int sockfd, char command[2], int skip, char buffer[DATA_SIZE])
 void sendCommands( int sockfd, char command[2], int skip, char buffer[DATA_SIZE]);
 void showMainMenuCommand();
 void showTopicCommand();
-void sendFile( int sockfd, char fileName[NAME_SIZE] );
-void downFile( int sockfd, char fileName[NAME_SIZE] );
+void sendFile( int sockfd);
+void downFile( int sockfd);
 void commandPrompt();
 char *nameStandardize( char str[MTU] );
 char *stringStandardize( char str[MTU] );
@@ -167,10 +167,12 @@ static void *send_handler( void *connfd ) {
 					exit(1);
 				}
 				else if( strcmp(command, "@upfile") == 0 ) {		//Command upfile = b
-					printf("Chuc nang chua hoan thien!\n");
+					sendFile(sockfd);
+					//printf("Chuc nang chua hoan thien!\n");
 				}
 				else if( strcmp(command, "@downfile") == 0 ) {		//Command downfile = c
-					printf("Chuc nang chua hoan thien!\n");
+					downFile(sockfd);
+					//printf("Chuc nang chua hoan thien!\n");
 				}
 				else {												//Command chat = a
 					char message[MTU] = "a";
@@ -200,7 +202,7 @@ static void *receive_handler( void *connfd ) {
 			strcpy(title, message);
 			printf( "Chatroom %s created success!\n\n", title);
 		}
-		else if( command == '2' ) {			//2 -> nhan command khi bi thang ngu nao do keo vao chatroom
+		else if( command == '2' ) {			//2 -> nhan command khi bi thang ngu nao do keo minh vao chatroom
 			strcpy(title, message);
 			printf( "You have been invited to chatroom %s\n\n", title);
 		}
@@ -208,11 +210,11 @@ static void *receive_handler( void *connfd ) {
 			strcpy(title, message);
 			printf( "You are now in chatroom %s.\n\n", title);
 		}
-		/*else if( command == '4' ) {		//4 tuc la server chuan bi gui file cho minh
+		else if( command == '4' ) {		//4 tuc la server chuan bi gui file cho minh
 			pthread_mutex_lock(&mutex);
-			downFile(sockfd, message);
+			//downFile(sockfd, message);	//???
 			pthread_mutex_unlock(&mutex);
-		}*/
+		}
 		
 		memset(message, 0, sizeof(message));
 	}
@@ -259,14 +261,15 @@ void showTopicCommand() {
 	puts("\t@exit				exit program\n");
 }
 
-void sendFile( int sockfd, char fileName[NAME_SIZE] ) {
-/*	scanf("%s", fileName);
+void sendFile( int sockfd) {
+	char fileName[NAME_SIZE];
+	scanf("%s", fileName);
 	//fgets
 	bzero(fileName,256);
 	while(1){
 		write(sockfd, fileName, 256);
             	printf("\nClient want to sendfile : %s. \n", fileName);
-            
+       
             	FILE *fp;
         	fp = fopen(fileName,"rb");
             	if(fp==NULL){
@@ -275,10 +278,8 @@ void sendFile( int sockfd, char fileName[NAME_SIZE] ) {
                 	exit(1);
             	}else{
  			int nread;
-    // send content file
         		char contentFile[255] = {0};
         		do{
-    // Read file in chunks of 256 bytes
 		    		nread=fread(contentFile, 1, 256, fp);
 		    		write(sockfd, contentFile, nread);
         		}while(nread >= 256);
@@ -292,44 +293,42 @@ void sendFile( int sockfd, char fileName[NAME_SIZE] ) {
             }
             	fclose(fp);
     }
-    close(sockfd);*/
+    close(sockfd);
 }
 
 //downloadfile from server
-void downFile( int sockfd, char fileName[NAME_SIZE] ) {
-    /*int bytesReceived = 0;
-    char recvBuff[256];
+void downFile( int sockfd) {
+    int bytesReceived = 0;
+    char fileName[NAME_SIZE], recvBuff[256];
     memset(recvBuff, '0', sizeof(recvBuff));
 	while(1){
-        	memset(recvBuff, 0, sizeof(recvBuff));
+        		memset(recvBuff, 0, sizeof(recvBuff));
 			printf("\nImport NameFile to download: ");
 			scanf("%s", fileName);
-        	fflush(stdin);
+        		fflush(stdin);
 			printf("Request file : %s to server.\n", fileName);
 			write(sockfd, fileName, 256);
-        
-    		FILE *fp;	    
-    		fp = fopen(fileName, "wb"); 
+        	
+    			FILE *fp;	    
+    			fp = fopen(fileName, "wb"); 
 		   	do {
 				  memset(recvBuff, 0, sizeof(recvBuff));
 			  	  bytesReceived=read(sockfd, recvBuff, sizeof(recvBuff));
-			  	  //printf("%d", bytesReceived);
+			  	  printf("%d", bytesReceived);
 				  if(strcmp(recvBuff,"error") == 0){
 			      		memset(recvBuff, 0, sizeof(recvBuff));
 			      		printf("File name doesn't exist in your server or invalid. \n");
 			      	  	continue;
-			      }else{
-			          //printf("Bytes received %d\n",bytesReceived);
+			      	  }else{
+			          	printf("Bytes received %d\n",bytesReceived);
 			          	fwrite(recvBuff, 1,bytesReceived,fp);
-	              }
-		   	}while(bytesReceived >= 256);
-	   
+	              		  }
+		   	}while(bytesReceived >= 256);	   
 	   		fclose(fp);
-     
-	        if(bytesReceived < 0){
-		    	printf("Read Error \n");
-	        }   	
-	}*/
+			if(bytesReceived < 0){
+			    	printf("Read Error \n");
+			}   	
+	}
 }
 
 void commandPrompt() {
@@ -341,36 +340,36 @@ void commandPrompt() {
 }
 
 char *nameStandardize(char str[MTU]) {
-  char *temp = malloc(NAME_SIZE);
-  int i, j = 0;
-  for( i = 0 ; i < strlen(str) ; i++ ) {
-    if( str[i] != '\n' && str[i] != ' ' && str[i] != '\r' && str[i] != '\t' ) {
-      *(temp+j) = str[i];
-      j++;
-    }
-    if( j == 32 ) break;
-  }
-  return temp;
+  	char *temp = malloc(NAME_SIZE);
+  	int i, j = 0;
+  	for( i = 0 ; i < strlen(str) ; i++ ) {
+    		if( str[i] != '\n' && str[i] != ' ' && str[i] != '\r' && str[i] != '\t' ) {
+	      		*(temp+j) = str[i];
+	      		j++;
+    		}
+    		if( j == 32 ) break;
+  	}
+  	return temp;
 }
 
 char *stringStandardize(char str[MTU]) {
-  char *token, *src = malloc(MTU), *des = malloc(MTU);
-  strcpy(src, str);
-  token = strtok(src, " ");
-  while( token != NULL ) {
-    char temp[32];
-    strcpy(temp, token);
-    if( strcmp(nameStandardize(temp), "") != 0 ) {
-      strcat(des, nameStandardize(temp));
-      strcat(des, " ");
-    }
-    token = strtok(NULL, " ");
-  }
-  *(des + strlen(des) - 1) = '\0';
-  return des;
+  	char *token, *src = malloc(MTU), *des = malloc(MTU);
+  	strcpy(src, str);
+  	token = strtok(src, " ");
+  	while( token != NULL ) {
+	    char temp[32];
+	    strcpy(temp, token);
+	    if( strcmp(nameStandardize(temp), "") != 0 ) {
+	      	strcat(des, nameStandardize(temp));
+	      	strcat(des, " ");
+	    }
+	    token = strtok(NULL, " ");
+  	}
+  	*(des + strlen(des) - 1) = '\0';
+  	return des;
 }
 
 void delay(unsigned int mseconds) {
-    clock_t goal = mseconds + clock();
-    while( goal > clock() );
+    	clock_t goal = mseconds + clock();
+    	while( goal > clock() );
 }

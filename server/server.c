@@ -375,9 +375,9 @@ void inviteClient( int sockfd, char message[MTU] ) {
 	Topic *tmpTopic = getTopicByTitle(getClientBySocket(sockfd)->title);
 	char buffer[MTU];
 	char *targetName ;
-    targetName = strtok(message, " ");
-    while( targetName != NULL) {
-    	memset(buffer, 0, sizeof(buffer));
+    	targetName = strtok(message, " ");
+    	while( targetName != NULL) {
+    		memset(buffer, 0, sizeof(buffer));
 		Client *targetClient = getClientByName(targetName);
 		if( targetClient != NULL ){
 			if( strcmp(targetClient->title, "") == 0 ) {
@@ -517,71 +517,70 @@ void clientExit( int sockfd ) {
 }
 
 void getFileFromClient( int sockfd, char fileName[NAME_SIZE] ) {
-// 	int bytesReceived = 0;
-//     	char recvBuff[256], fileName[256];
-// 	while(1){
-// 		read(connfd, filename, 256);	
-// 		printf("\nClient want to send of file : %s. \n", filename);
+ 	int bytesReceived = 0;
+     	char recvBuff[256];
+ 	while(1){
+ 		read(connfd, filename, 256);	
+ 		printf("\nClient want to send of file : %s. \n", filename);
 		
-// 		FILE *fp;	    
-//     		fp = fopen(fileName, "wb"); 
-// 	   	do {
-// 			  memset(recvBuff, 0, sizeof(recvBuff));
-// 		  	  bytesReceived=read(sockfd, recvBuff, sizeof(recvBuff));
-// 			  if(strcmp(recvBuff,"error") == 0){
-// 		      		memset(recvBuff, 0, sizeof(recvBuff));
-// 		      		printf("File name doesn't exist in your server or invalid. \n");
-// 		      	  	continue;
-// 		          }
-// 			  else{
-// 		          	fwrite(recvBuff, 1,bytesReceived,fp);
-//                		  }
-// 	   	}while(bytesReceived >= 256);	   
-// 	   	fclose(fp);     
-// 	        if(bytesReceived < 0){
-// 		    printf("Read Error \n");
-// 	        }   	
-// 	}
+ 		FILE *fp;	    
+     		fp = fopen(fileName, "wb"); 
+ 	   	do {
+ 			  memset(recvBuff, 0, sizeof(recvBuff));
+ 		  	  bytesReceived=read(sockfd, recvBuff, sizeof(recvBuff));
+ 			  if(strcmp(recvBuff,"error") == 0){
+ 		      		memset(recvBuff, 0, sizeof(recvBuff));
+ 		      		printf("File name doesn't exist in your server or invalid. \n");
+ 		      	  	continue;
+ 		          }
+ 			  else{
+ 		          	fwrite(recvBuff, 1,bytesReceived,fp);
+                		  }
+ 	   	}while(bytesReceived >= 256);	   
+ 	   	fclose(fp);     
+ 	        if(bytesReceived < 0){
+ 		    printf("Read Error \n");
+ 	        }   	
+ 	}
 }
 
 void sendFileToClient( int sockfd, char fileName[NAME_SIZE] ) {
-//     int connfd = *(int*)sockfd;
-//     char filename[256];
-//     bzero(filename,256);
-//     while(1)
-//     {
-//             read(connfd, filename, 256);
-//             if(strcmp(filename,"@") == 0){
-//                 printf("Connection ended!");
-//                 break;
-//             }
-//             printf("\nClient want to download file : %s. \n", filename);
+     int connfd = *(int*)sockfd;
+     char filename[256];
+     bzero(filename,256);
+     while(1)
+     {
+             read(connfd, filename, 256);
+             if(strcmp(filename,"@") == 0){
+                 printf("Connection ended!");
+                 break;
+             }
+             printf("\nClient want to download file : %s. \n", filename);
             
-//             FILE *fp;
-//             fp = fopen(filename,"rb");
-//             if(fp==NULL)
-//             {
-//                 	printf("File open error or not exist file.\n");
-//                 	write(connfd, "error", sizeof("error"));
-//                  continue;
-//             }else{
+             FILE *fp;
+             fp = fopen(filename,"rb");
+             if(fp==NULL)
+             {
+                 	printf("File open error or not exist file.\n");
+                 	write(connfd, "error", sizeof("error"));
+                  continue;
+             }else{
  
-//             int nread;
-//             // send content file
-//             char contentfile[255] = {0};
-//             do{
-//             /* Read file in chunks of 256 bytes */
-// 		    		nread=fread(contentfile, 1, 256, fp);
-// 		    		write(connfd, contentfile, nread);
-//             }while(nread >= sizeof(contentfile));
+             int nread;
+             char contentfile[255] = {0};
+             do{
+             /* Read file in chunks of 256 bytes */
+ 		    		nread=fread(contentfile, 1, 256, fp);
+ 		    		write(connfd, contentfile, nread);
+             }while(nread >= sizeof(contentfile));
 
-//             	if (nread < 256){
-//                     if (feof(fp))
-//                         printf("Send file successfull.\n");
-//                     if (ferror(fp))
-//                         printf("Error reading file.\n");
-//                 }
-//             }
-//             fclose(fp);
-//      }
+             	if (nread < 256){
+                     if (feof(fp))
+                         printf("Send file successfull.\n");
+                     if (ferror(fp))
+                         printf("Error reading file.\n");
+                 }
+             }
+             fclose(fp);
+      }
 }
