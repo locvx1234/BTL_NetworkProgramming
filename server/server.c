@@ -9,6 +9,7 @@
 #include <pthread.h>		//pthread_create, pthread_detach
 #include <sys/stat.h>		//mkdir, rmdir
 #include <dirent.h>			//DIR, opendir
+#include <time.h>		//clock_t clock
 
 //Static Define
 #define NUMBER_OF_CLIENT	32
@@ -45,6 +46,7 @@ Client *getClientByName( char username[NAME_SIZE] );
 int joinRoom( int sockfd, char title[NAME_SIZE] );
 int buildListFileInFolder( char *listFile[], const char *path );
 void deleteFolder( const char *path );
+void delay(unsigned int mseconds);
 
 void clientSendAll( int sockfd, char message[MTU] );					//a
 void addClient( int sockfd, char username[NAME_SIZE] );				//-1
@@ -143,7 +145,7 @@ static void *doit( void *connfd ) {
 		char command = message[0];
 		strncpy(message, message+1, strlen(message));
 		if( command == 'a' ) {		//@chat
-			char msgChat[MTU] = "a\n";
+			char msgChat[MTU] = "0";
 			strcat(msgChat, message);
 			clientSendAll(sockfd, msgChat);
 		}
@@ -274,6 +276,11 @@ void deleteFolder( const char *path ) {
 	rmdir(path);
 }
 
+void delay(unsigned int mseconds) {
+    clock_t goal = mseconds + clock();
+    while( goal > clock() );
+}
+
 void clientSendAll( int sockfd, char message[MTU] ) {
 	Topic *tmpTopic = getTopicByTitle(getClientBySocket(sockfd)->title);
 	int i;
@@ -395,6 +402,7 @@ void inviteClient( int sockfd, char message[MTU] ) {
 		}
 		write(sockfd, buffer, strlen(buffer));			// loc : co the gay ra bug  
         targetName = strtok(NULL, " ");
+        delay(15000);
     }
 }
 

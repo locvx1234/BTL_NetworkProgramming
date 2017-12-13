@@ -104,7 +104,6 @@ static void *send_handler( void *connfd ) {
 	int sockfd = *((int*)connfd);
 	char buffer[DATA_SIZE];
 	for( ; ; ) {
-		delay(30000);
 		commandPrompt();
 		memset(buffer, 0, sizeof(buffer));
 		fgets(buffer, sizeof(buffer), stdin);	//Client nhap lenh, hoac nhap cau chat
@@ -141,7 +140,7 @@ static void *send_handler( void *connfd ) {
 			}
 			else {									//Client da tham gia chatroom
 				if( strcmp(command, "@invite") == 0 ) {				//Command invite = 1
-					sendCommands(sockfd, "0", 8, buffer);
+					sendCommands(sockfd, "1", 8, buffer);
 				}
 				else if( strcmp(command, "@listonline") == 0 ) {	//Command listonline = 3
 					write(sockfd, "3", 1);
@@ -182,6 +181,7 @@ static void *send_handler( void *connfd ) {
 				}   
 			}
 		}
+		delay(50000);
 	}
 	return 0;
 }
@@ -193,10 +193,7 @@ static void *receive_handler( void *connfd ) {
 	while( read(sockfd, message, sizeof(message)) > 0 ) {
 		char command = message[0];
 		strncpy(message, message+1, strlen(message));
-		if( command == 'a' ) {				//a -> nhan message chat
-			puts(message);
-		}
-		else if( command == '0' ) {			//0 -> nhan command thong bao
+		if( command == '0' ) {				//0 -> nhan command thong bao
 			puts(message);
 		}
 		else if( command == '1' ) {			//1 -> nhan command khi create chatroom thanh cong
@@ -227,17 +224,13 @@ void sendCommand( int sockfd, char command[2], int skip, char buffer[DATA_SIZE])
 	strcpy(message, command);
 	strncpy(buffer, buffer + skip, strlen(buffer));
 	strcat(message, nameStandardize(buffer));
-	if( strlen(message) > 0 ) {
-		write(sockfd, message, strlen(message));
-	} else {
-		printf("bug:%s\n", message);
-	}
+	write(sockfd, message, strlen(message));
 }
 
 void sendCommands( int sockfd, char command[2], int skip, char buffer[DATA_SIZE]) {
 	char message[MTU];
 	strcpy(message, command);
-	strncat(buffer, buffer + skip, strlen(buffer));
+	strncpy(buffer, buffer + skip, strlen(buffer));
 	strcpy(buffer, stringStandardize(buffer));
 	strcat(message, buffer);
 	write(sockfd, message, strlen(message));
