@@ -17,7 +17,7 @@
 #define NAME_SIZE	32
 #define DATA_SIZE	1024
 #define MTU 		1200
-#define PORT 		5000
+#define PORT 		50001
 #define	SA 			struct sockaddr
 
 //Function Declare
@@ -209,19 +209,21 @@ static void *receive_handler( void *connfd ) {
 			printf( "You are now in chatroom %s.\n\n", title);
 		}
 		else if( command == '4' ) {		//4 tuc la server chuan bi gui file cho minh
-			char fileName[NAME_SIZE];
+			char fileName[NAME_SIZE];			
+			strncpy(fileName, message - 5, 5);
 			strcpy(fileName, message);
+			puts(fileName);
 			int bytesReceived = 0;
 		    	char recvBuff[256];
 		    	memset(recvBuff, '0', sizeof(recvBuff));
-
 			FILE *fp = fopen(fileName, "wb"); 
 		   	do {
 				  memset(recvBuff, 0, sizeof(recvBuff));
 			  	  bytesReceived = read(sockfd, recvBuff, sizeof(recvBuff));
+				  //printf("%d", bytesReceived);
 				  if( strcmp(recvBuff,"error") == 0 ){
 			      		memset(recvBuff, 0, sizeof(recvBuff));
-			      		printf("File name doesn't exist in your server or invalid. \n");
+			      		printf("\nFile name doesn't exist in your server or invalid. \n");
 			      	  	continue;
 			      	  } else {
 				  	fwrite(recvBuff, 1,bytesReceived,fp);
@@ -290,7 +292,6 @@ void sendFile( int sockfd, char buffer[NAME_SIZE] ) {
     	if( fp == NULL ) {
 	        printf("File open error or not exist file.\n");
 	        write(sockfd, "error", sizeof("error"));
-        	//exit(1);
     	} else {
 		int nread;
 		char contentFile[255] = {0};

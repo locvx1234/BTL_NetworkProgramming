@@ -18,7 +18,7 @@
 #define NAME_SIZE			32
 #define DATA_SIZE			1024
 #define MTU 				1200
-#define PORT 				5000
+#define PORT 				50001
 #define	SA 					struct sockaddr
 
 //Struct Declare and Definition
@@ -534,7 +534,7 @@ void getFileFromClient( int sockfd, char filename[NAME_SIZE] ) {
 	      	  	continue;
 	          } else {
 	          	fwrite(recvBuff,1, bytesReceived, fp);
-        		  }
+        	  }
    	} while( bytesReceived >= 256 );	   
    	fclose(fp);     
         if( bytesReceived < 0 ){
@@ -550,8 +550,10 @@ void sendFileToClient( int sockfd, char filename[NAME_SIZE] ) {
 	strcat(path, getClientBySocket(sockfd)->title);
 	strcat(path, "/");
 	strcat(path, filename);
+	puts(filename);
+	puts(path);
 	FILE *fp = fopen(filename, "rb");
-	if( fp==NULL )
+	if( fp == NULL )
 	{
 	 	printf("File open error or not exist file.\n");
 	 	write(sockfd, "error", sizeof("error"));
