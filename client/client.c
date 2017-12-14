@@ -27,8 +27,8 @@ void sendCommand( int sockfd, char command[2], int skip, char buffer[DATA_SIZE])
 void sendCommands( int sockfd, char command[2], int skip, char buffer[DATA_SIZE]);
 void showMainMenuCommand();
 void showTopicCommand();
-void sendFile( int sockfd);
-void downFile( int sockfd);
+void sendFile( int sockfd, char buffer[DATA_SIZE] );
+void downFile( int sockfd, char buffer[DATA_SIZE] );
 void commandPrompt();
 char *nameStandardize( char str[MTU] );
 char *stringStandardize( char str[MTU] );
@@ -167,12 +167,10 @@ static void *send_handler( void *connfd ) {
 					exit(1);
 				}
 				else if( strcmp(command, "@upfile") == 0 ) {		//Command upfile = b
-					sendFile(sockfd);
-					//printf("Chuc nang chua hoan thien!\n");
+					sendFile(sockfd, buffer);
 				}
 				else if( strcmp(command, "@downfile") == 0 ) {		//Command downfile = c
-					downFile(sockfd);
-					//printf("Chuc nang chua hoan thien!\n");
+					downFile(sockfd, buffer);
 				}
 				else {												//Command chat = a
 					char message[MTU] = "a";
@@ -211,9 +209,28 @@ static void *receive_handler( void *connfd ) {
 			printf( "You are now in chatroom %s.\n\n", title);
 		}
 		else if( command == '4' ) {		//4 tuc la server chuan bi gui file cho minh
-			pthread_mutex_lock(&mutex);
-			//downFile(sockfd, message);	//???
-			pthread_mutex_unlock(&mutex);
+			char fileName[NAME_SIZE];
+			strcpy(fileName, message);
+			int bytesReceived = 0;
+		    	char recvBuff[256];
+		    	memset(recvBuff, '0', sizeof(recvBuff));
+
+			FILE *fp = fopen(fileName, "wb"); 
+		   	do {
+				  memset(recvBuff, 0, sizeof(recvBuff));
+			  	  bytesReceived = read(sockfd, recvBuff, sizeof(recvBuff));
+				  if( strcmp(recvBuff,"error") == 0 ){
+			      		memset(recvBuff, 0, sizeof(recvBuff));
+			      		printf("File name doesn't exist in your server or invalid. \n");
+			      	  	continue;
+			      	  } else {
+				  	fwrite(recvBuff, 1,bytesReceived,fp);
+		      		  }
+		   	} while( bytesReceived >= 256 );	   
+			fclose(fp);
+			if( bytesReceived < 0 ){
+			    	printf("Read Error \n");
+			}
 		}
 		
 		memset(message, 0, sizeof(message));
@@ -239,8 +256,8 @@ void sendCommands( int sockfd, char command[2], int skip, char buffer[DATA_SIZE]
 }
 
 void showMainMenuCommand() {
-	puts("\t@create <name>			create a new chatroom");
-	puts("\t@join <name>			join an existed chatroom");
+	puts("\t@create <chatroom_name>			create a new chatroom");
+	puts("\t@join <chatroom_name>			join an existed chatroom");
 	puts("\t@listonline			list all users online");
 	puts("\t@listchatroom			list all chatroom");
 	puts("\t@help				list command");
@@ -249,86 +266,57 @@ void showMainMenuCommand() {
 }
 
 void showTopicCommand() {
-	puts("\t@invite <name>			invite 1 or many user");
+	puts("\t@invite <user_name>			invite 1 or many user");
 	puts("\t@listonline			list all users online");
 	puts("\t@listuser			list all users in chatroom");
 	puts("\t@listfile			list all uploaded files in chatroom");
 	puts("\t@listchatroom			list all chatroom");
-	puts("\t@upfile <name>			upload a file");
-	puts("\t@downfile <name>		download a file");
+	puts("\t@upfile <file_name>			upload a file");
+	puts("\t@downfile <file_name>		download a file");
 	puts("\t@help				list command");
 	puts("\t@out				leave chatroom");
 	puts("\t@exit				exit program\n");
 }
 
-void sendFile( int sockfd) {
-	char fileName[NAME_SIZE];
-	scanf("%s", fileName);
-	//fgets
-	bzero(fileName,256);
-	while(1){
-		write(sockfd, fileName, 256);
-            	printf("\nClient want to sendfile : %s. \n", fileName);
-       
-            	FILE *fp;
-        	fp = fopen(fileName,"rb");
-            	if(fp==NULL){
-		        printf("File open error or not exist file.\n");
-		        write(sockfd, "error", sizeof("error"));
-                	exit(1);
-            	}else{
- 			int nread;
-        		char contentFile[255] = {0};
-        		do{
-		    		nread=fread(contentFile, 1, 256, fp);
-		    		write(sockfd, contentFile, nread);
-        		}while(nread >= 256);
+void sendFile( int sockfd, char buffer[NAME_SIZE] ) {
+	char fileName[DATA_SIZE];
+	strncpy(fileName, buffer + 8, strlen(buffer));
+	strcpy(fileName, nameStandardize(fileName));
+	char message[MTU] = "b";
+	strcat(message, fileName);
+	write(sockfd, message, strlen(message));
 
-		        if (nread < 256){
-		            if (feof(fp))
-		                printf("Send file successfull.\n");
-		            if (ferror(fp))
-		                printf("Error reading file.\n");
-		        }
-            }
-            	fclose(fp);
+    	FILE *fp = fopen(fileName, "rb");
+    	if( fp == NULL ) {
+	        printf("File open error or not exist file.\n");
+	        write(sockfd, "error", sizeof("error"));
+        	//exit(1);
+    	} else {
+		int nread;
+		char contentFile[255] = {0};
+		do {
+	    		nread = fread(contentFile, 1, 256, fp);
+	    		write(sockfd, contentFile, nread);
+		} while( nread >= 256 );
+
+	        if( nread < 256 ){
+	            if( feof(fp) )
+	                printf("Send file successfull.\n");
+	            if( ferror(fp) )
+	                printf("Error reading file.\n");
+	        }
+    	fclose(fp);
     }
-    close(sockfd);
 }
 
 //downloadfile from server
-void downFile( int sockfd) {
-    int bytesReceived = 0;
-    char fileName[NAME_SIZE], recvBuff[256];
-    memset(recvBuff, '0', sizeof(recvBuff));
-	while(1){
-        		memset(recvBuff, 0, sizeof(recvBuff));
-			printf("\nImport NameFile to download: ");
-			scanf("%s", fileName);
-        		fflush(stdin);
-			printf("Request file : %s to server.\n", fileName);
-			write(sockfd, fileName, 256);
-        	
-    			FILE *fp;	    
-    			fp = fopen(fileName, "wb"); 
-		   	do {
-				  memset(recvBuff, 0, sizeof(recvBuff));
-			  	  bytesReceived=read(sockfd, recvBuff, sizeof(recvBuff));
-			  	  printf("%d", bytesReceived);
-				  if(strcmp(recvBuff,"error") == 0){
-			      		memset(recvBuff, 0, sizeof(recvBuff));
-			      		printf("File name doesn't exist in your server or invalid. \n");
-			      	  	continue;
-			      	  }else{
-			          	printf("Bytes received %d\n",bytesReceived);
-			          	fwrite(recvBuff, 1,bytesReceived,fp);
-	              		  }
-		   	}while(bytesReceived >= 256);	   
-	   		fclose(fp);
-			if(bytesReceived < 0){
-			    	printf("Read Error \n");
-			}   	
-	}
+void downFile( int sockfd, char buffer[NAME_SIZE] ) {
+	char fileName[DATA_SIZE];
+	strncpy(fileName, buffer + 10, strlen(buffer));
+	strcpy(fileName, nameStandardize(fileName));
+	char message[MTU] = "c";
+	strcat(message, fileName);
+	write(sockfd, message, strlen(message));	
 }
 
 void commandPrompt() {
