@@ -18,6 +18,8 @@
 #define MTU 		1200
 #define PORT 		50001
 #define	SA 			struct sockaddr
+#define PBSTR "||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||"
+#define PBWIDTH 70
 
 //Function Declare
 static void *sendHandler( void *connfd );
@@ -31,6 +33,7 @@ void downFile( int sockfd, char buffer[DATA_SIZE] );
 void commandPrompt();
 char *nameStandardize( char str[MTU] );
 char *stringStandardize( char str[MTU] );
+void printProgress ( double process );
 
 //Global Variable
 char username[NAME_SIZE], topicName[NAME_SIZE] = "";
@@ -203,32 +206,29 @@ static void *receiveHandler( void *connfd ) {
 		}
 		else if( command == '2' ) {			//2 -> nhan command khi bi thang ngu nao do keo minh vao chatroom
 			strcpy(topicName, message);
-			printf("\nYou have been invited to chatroom %s\n", topicName);
-			printf("You are now in chatroom %s!\n", topicName);
+			printf("You have been invited to chatroom %s\n", topicName);
+			printf("You are now in chatroom %s!\n\n", topicName);
 		}
 		else if( command == '3' ) {			//3 -> tu minh join room thanh cong
 			strcpy(topicName, message);
 			printf("\nYou are now in chatroom %s!\n", topicName);
 		}
-		else if( command == '4' ) {		//4 tuc la server chuan bi gui file cho minh
-			char fileName[NAME_SIZE];
-			strncpy(fileName, message - 5, 5);
-			strcpy(fileName, message);
-			int bytesReceived = 0;
-			char recvBuff[256];
-			FILE *fp = fopen(fileName, "wb"); 
-			do {
-				memset(recvBuff, 0, sizeof(recvBuff));
-				  bytesReceived = read(sockfd, recvBuff, sizeof(recvBuff));
-				if( strcmp(recvBuff,"error") == 0 ){
-					memset(recvBuff, 0, sizeof(recvBuff));
-					puts("\nFile name doesn't exist in your server or invalid!");
-					continue;
-				} else {
-					fwrite(recvBuff, 1,bytesReceived,fp);
-				}
-			} while( bytesReceived >= 256 );
-			fclose(fp);
+		else if( command == '4' ) {			//4FileName tuc la server chuan bi gui file cho minh
+			char filename[NAME_SIZE];
+			strcpy(filename, message);
+			memset(message, 0, sizeof(message));
+			read(sockfd, message, sizeof(message));	//Nhan kich thuoc file tu server
+			int fileSize = atoi(message), receivedData = 0, n;
+			FILE *file = fopen(filename, "w");
+			while( receivedData < fileSize ) {
+				memset(message, 0, sizeof(message));
+				n = read(sockfd, message, sizeof(message));
+				fwrite(message, sizeof(char), n, file);
+				receivedData += n;
+				printProgress((double)receivedData/fileSize);
+			}
+			printf("\nDownload file %s completed!\n\n", filename);
+			fclose(file);
 		}
 		memset(message, 0, sizeof(message));
 	}
@@ -288,29 +288,36 @@ void sendFile( int sockfd, char buffer[NAME_SIZE] ) {
 	strncpy(fileName, buffer + 8, strlen(buffer));
 	strcpy(fileName, nameStandardize(fileName));
 
-	FILE *fp = fopen(fileName, "rb");
-	if( fp == NULL ) {
+	FILE *file = fopen(fileName, "r+");
+	if( file == NULL ) {
 		printf("File %s doens't exist!\n", fileName);
 	} else {
-		pthread_mutex_lock(&mutex);
+		fseek(file, 0, SEEK_END);
+		int fileSize = ftell(file);
+		if( fileSize > 1000000000) {
+			puts("You can only send file with size less than 1Gb!\n");
+			return;
+		}
 		char message[MTU] = "b";
 		strcat(message, fileName);
-		write(sockfd, message, strlen(message));
-
-		int nread;
-		char contentFile[255] = {0};
-		do {
-			nread = fread(contentFile, 1, 256, fp);
-			write(sockfd, contentFile, nread);
-		} while( nread >= 256 );
-		if( nread < 256 ) {
-			if( feof(fp) )
-				puts("Send file successfull!");
-			if( ferror(fp) )
-				puts("Error reading file!");
+		write(sockfd, message, strlen(message));	// Gui thong bao bFileName
+		memset(message, 0, sizeof(message));
+		sprintf(message, "%d", fileSize);
+		write(sockfd, message, sizeof(message));	// Gui kich thuoc file
+		rewind(file);
+		puts("\nUploading file... Please don't do anything until done!\n");
+		int sendedData = 0, n;
+		while (sendedData < fileSize) {					//Gui file
+			memset(message, 0, sizeof(message));
+			n = fread(message, sizeof(char), MTU, file);
+			sendedData += n;
+			write(sockfd, message, n);
+			printProgress((double)sendedData/fileSize);
 		}
-		fclose(fp);
-		pthread_mutex_unlock(&mutex);
+		if( sendedData == fileSize ) {
+			puts("\nUpload completed!\n");
+		}
+		fclose(file);
 	}
 }
 
@@ -321,7 +328,7 @@ void downFile( int sockfd, char buffer[NAME_SIZE] ) {
 	strcpy(fileName, nameStandardize(fileName));
 	char message[MTU] = "c";
 	strcat(message, fileName);
-	write(sockfd, message, strlen(message));
+	write(sockfd, message, strlen(message));		// Gui thong bao cFileName
 }
 
 void commandPrompt() {
@@ -332,7 +339,7 @@ void commandPrompt() {
 	}*/
 }
 
-char *nameStandardize(char str[MTU]) {
+char *nameStandardize( char str[MTU] ) {
 	char *temp = malloc(NAME_SIZE);
 	int i, j = 0;
 	for( i = 0 ; i < strlen(str) ; i++ ) {
@@ -345,7 +352,7 @@ char *nameStandardize(char str[MTU]) {
 	return temp;
 }
 
-char *stringStandardize(char str[MTU]) {
+char *stringStandardize( char str[MTU] ) {
 	char *token, *src = malloc(MTU), *des = malloc(MTU);
 	strcpy(src, str);
 	token = strtok(src, " ");
@@ -360,4 +367,12 @@ char *stringStandardize(char str[MTU]) {
 	}
 	*(des + strlen(des) - 1) = '\0';
 	return des;
+}
+
+void printProgress( double process ) {
+	int val = (int) (process * 100);
+	int lpad = (int) (process * PBWIDTH);
+	int rpad = PBWIDTH - lpad;
+	printf("\r%3d%% [%.*s%*s]", val, lpad, PBSTR, rpad, "");
+	fflush(stdout);
 }

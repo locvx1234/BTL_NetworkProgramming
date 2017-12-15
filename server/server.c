@@ -174,14 +174,10 @@ static void *doit( void *connfd ) {
 			clientExit(sockfd);
 		}
 		else if(command == 'b' ) {		//@upfile
-			pthread_mutex_lock(&mutex);
 			upFile(sockfd, message);
-			pthread_mutex_unlock(&mutex);
 		}
 		else if (command == 'c' ) {		//@downfile
-			pthread_mutex_lock(&mutex);
 			downFile(sockfd, message);
-			pthread_mutex_unlock(&mutex);
 		}
 		memset(message, 0, sizeof(message));
 	}
@@ -517,45 +513,57 @@ void upFile( int sockfd, char filename[NAME_SIZE] ) {
 	strcat(path, "/");
 	strcat(path, filename);
 
-	int bytesReceived = 0;
- 	char recvBuff[256];
-	FILE *fp = fopen(path, "wb");
-   	do {
-		memset(recvBuff, 0, sizeof(recvBuff));
-		fwrite(recvBuff, 1, bytesReceived, fp);
-	} while( bytesReceived >= 256 );
-   	fclose(fp);
+	char message[MTU];
+	memset(message, 0, sizeof(message));
+	read(sockfd, message, sizeof(message));
+	int fileSize = atoi(message), receivedData = 0, n;
+
+	FILE *file = fopen(path, "w");
+	while( receivedData < fileSize ) {
+		memset(message, 0, sizeof(message));
+		n = read(sockfd, message, sizeof(message));
+		fwrite(message, sizeof(char), n, file);
+		receivedData += n;
+	}
+	printf("Upload file %s completed!\n", filename);
+	fclose(file);
 }
 
 void downFile( int sockfd, char filename[NAME_SIZE] ) {
-	char message[MTU] = "4";
-	strcat(message, filename);
-	write(sockfd, message, strlen(message));
-	char path[NAME_SIZE + 4] = "./";
+	char path[NAME_SIZE + 4] = "./", message[MTU];
 	strcat(path, getClientBySocket(sockfd)->topicName);
 	strcat(path, "/");
 	strcat(path, filename);
-	puts(filename);
-	puts(path);
-	FILE *fp = fopen(path, "rb");
-	if( fp == NULL )
-	{
-	 	puts("File open error or not exist file!");
-	 	write(sockfd, "error", sizeof("error"));
-	} else {
-		int nread;
-		char contentfile[255] = {0};
-		do {
-		    		nread = fread(contentfile, 1, 256, fp);
-		    		write(sockfd, contentfile, nread);
-		} while( nread >= sizeof(contentfile) );
-		if ( nread < 256 ){
-		     if ( feof(fp) )
-			 puts("Send file successfull!");
-		     if ( ferror(fp) )
-			 puts("Error reading file!");
-		 }
-	}
-	fclose(fp);
-}
 
+	FILE *file = fopen(path, "r+");
+	if( file == NULL ) {			// Neu file khong ton tai thi gui kich thuoc file la -1 (kieu string)
+		memset(message, 0, sizeof(message));
+		sprintf(message, "0File %s doesn't existed!\n", filename);
+		write(sockfd, message, sizeof(message));
+	} else {						// Neu file co ton tai
+		strcpy(message, "4");
+		strcat(message, filename);
+		write(sockfd, message, strlen(message));
+
+		usleep(1000);
+		fseek(file, 0, SEEK_END);
+		int fileSize = ftell(file);
+
+		memset(message, 0, sizeof(message));
+		sprintf(message, "%d", fileSize);
+		write(sockfd, message, sizeof(message));	// Gui kich thuoc file
+
+		rewind(file);
+		int sendedData = 0, n;
+		while (sendedData < fileSize) {					//Gui file
+			memset(message, 0, sizeof(message));
+			n = fread(message, sizeof(char), sizeof(message), file);
+			sendedData += n;
+			write(sockfd, message, n);
+		}
+		if( sendedData == fileSize ) {
+			puts("Send file %s completed!");
+		}
+		fclose(file);
+	}
+}
