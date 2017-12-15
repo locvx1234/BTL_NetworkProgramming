@@ -46,7 +46,6 @@ Client *getClientByName( char username[NAME_SIZE] );
 int joinRoom( int sockfd, char title[NAME_SIZE] );
 int buildListFileInFolder( char *listFile[], const char *path );
 void deleteFolder( const char *path );
-void delay(unsigned int mseconds);
 
 void clientSendAll( int sockfd, char message[MTU] );					//a
 void addClient( int sockfd, char username[NAME_SIZE] );				//-1
@@ -276,11 +275,6 @@ void deleteFolder( const char *path ) {
 	rmdir(path);
 }
 
-void delay(unsigned int mseconds) {
-    clock_t goal = mseconds + clock();
-    while( goal > clock() );
-}
-
 void clientSendAll( int sockfd, char message[MTU] ) {
 	Topic *tmpTopic = getTopicByTitle(getClientBySocket(sockfd)->title);
 	int i;
@@ -400,9 +394,9 @@ void inviteClient( int sockfd, char message[MTU] ) {
 		} else {
 			sprintf(buffer, "0User %s doesn't exist!\n", targetName);
 		}
-		write(sockfd, buffer, strlen(buffer));			// loc : co the gay ra bug  
+		write(sockfd, buffer, strlen(buffer));
         targetName = strtok(NULL, " ");
-        delay(15000);
+        sleep(1);
     }
 }
 

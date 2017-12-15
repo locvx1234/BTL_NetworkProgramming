@@ -21,21 +21,20 @@
 #define	SA 			struct sockaddr
 
 //Function Declare
-static void * send_handler( void *connfd );
-static void * receive_handler( void *connfd );
-void sendCommand( int sockfd, char command[2], int skip, char buffer[DATA_SIZE]);
-void sendCommands( int sockfd, char command[2], int skip, char buffer[DATA_SIZE]);
-void showMainMenuCommand();
+static void *sendHandler( void *connfd );
+static void *receiveHandler( void *connfd );
+void sendSingleVariable( int sockfd, char command[2], int skip, char buffer[DATA_SIZE]);
+void sendMultiVariables( int sockfd, char command[2], int skip, char buffer[DATA_SIZE]);
+void showMainCommand();
 void showTopicCommand();
 void sendFile( int sockfd, char buffer[DATA_SIZE] );
 void downFile( int sockfd, char buffer[DATA_SIZE] );
 void commandPrompt();
 char *nameStandardize( char str[MTU] );
 char *stringStandardize( char str[MTU] );
-void delay(unsigned int mseconds);
 
 //Global Variable
-char username[NAME_SIZE], title[NAME_SIZE] = "";
+char username[NAME_SIZE], topicName[NAME_SIZE] = "";
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 //Main Function
@@ -51,7 +50,7 @@ int main( int argc, char *argv[] ) {
 		perror( "Error when create!\n" );
 		exit(1);
 	}else {
-		printf( "Socket created...\n" );	
+		puts( "Socket created..." );	
 	}
 
 	//Initialize sockaddr_in data structure
@@ -91,8 +90,8 @@ int main( int argc, char *argv[] ) {
 	}
 
 	pthread_t send_tid, recv_tid;
-  	pthread_create(&recv_tid, NULL, &receive_handler,(void *) &connfd);
-	pthread_create(&send_tid, NULL, &send_handler,(void *) &connfd);
+  	pthread_create(&recv_tid, NULL, &receiveHandler,(void *) &connfd);
+	pthread_create(&send_tid, NULL, &sendHandler,(void *) &connfd);
 	pthread_join(recv_tid, NULL);
 	pthread_join(send_tid, NULL);
 	
@@ -100,11 +99,10 @@ int main( int argc, char *argv[] ) {
 	return 0;
 }
 
-static void *send_handler( void *connfd ) {
+static void *sendHandler( void *connfd ) {
 	int sockfd = *((int*)connfd);
 	char buffer[DATA_SIZE];
 	for( ; ; ) {
-		commandPrompt();
 		memset(buffer, 0, sizeof(buffer));
 		fgets(buffer, sizeof(buffer), stdin);	//Client nhap lenh, hoac nhap cau chat
 		fflush(stdin);
@@ -114,12 +112,12 @@ static void *send_handler( void *connfd ) {
 			char command[DATA_SIZE];
 			strcpy(command, buffer);
 			strtok(command, " ");
-			if( strcmp(title, "") == 0 ) {			//Client chua tham gia chatroom
+			if( strcmp(topicName, "") == 0 ) {			//Client chua tham gia chatroom
 				if( strcmp(command, "@create" ) == 0 ) {			//Command create = 0
-					sendCommand(sockfd, "0", 8, buffer);
+					sendSingleVariable(sockfd, "0", 8, buffer);
 				}
 				else if( strcmp(command, "@join") == 0 ) {			//Command join = 2
-					sendCommand(sockfd, "2", 6, buffer);
+					sendSingleVariable(sockfd, "2", 6, buffer);
 				}
 				else if( strcmp(command, "@listonline") == 0 ) {	//Command listonline = 3
 					write(sockfd, "3", 1);
@@ -128,19 +126,20 @@ static void *send_handler( void *connfd ) {
 					write(sockfd, "6", 1);
 				}
 				else if( strcmp(command, "@help") == 0 ) {			//Command help = 7
-					showMainMenuCommand();
+					showMainCommand();
 				}
 				else if( strcmp(command, "@exit") == 0 ) {			//Command exit = 9
 					write(sockfd, "9", 1);
+					close(sockfd);
 					exit(1);
 				}
 				else {
-					printf( "--Invalid Command. Type @help.\n\n" );
+					puts( "--Invalid Command. Type @help.\n" );
 				}
 			}
 			else {									//Client da tham gia chatroom
 				if( strcmp(command, "@invite") == 0 ) {				//Command invite = 1
-					sendCommands(sockfd, "1", 8, buffer);
+					sendMultiVariables(sockfd, "1", 8, buffer);
 				}
 				else if( strcmp(command, "@listonline") == 0 ) {	//Command listonline = 3
 					write(sockfd, "3", 1);
@@ -159,11 +158,12 @@ static void *send_handler( void *connfd ) {
 				}
 				else if( strcmp(command, "@out") == 0 ) {			//Command out = 8
 					write(sockfd, "8", 1);
-					strcpy(title, "");
+					strcpy(topicName, "");
 					printf("\n");
 				}
 				else if( strcmp(command, "@exit") == 0 ) {			//Command exit = 9
 					write(sockfd, "9", 1);
+					close(sockfd);
 					exit(1);
 				}
 				else if( strcmp(command, "@upfile") == 0 ) {		//Command upfile = b
@@ -181,13 +181,12 @@ static void *send_handler( void *connfd ) {
 				}   
 			}
 		}
-		delay(50000);
 	}
 	return 0;
 }
 
 //revcmessage thread function
-static void *receive_handler( void *connfd ) {
+static void *receiveHandler( void *connfd ) {
 	int sockfd = *((int*)connfd);
 	char message[MTU];
 	while( read(sockfd, message, sizeof(message)) > 0 ) {
@@ -197,50 +196,45 @@ static void *receive_handler( void *connfd ) {
 			puts(message);
 		}
 		else if( command == '1' ) {			//1 -> nhan command khi create chatroom thanh cong
-			strcpy(title, message);
-			printf( "Chatroom %s created success!\n\n", title);
+			strcpy(topicName, message);
+			printf( "Chatroom %s created success!\n", topicName);
 		}
 		else if( command == '2' ) {			//2 -> nhan command khi bi thang ngu nao do keo minh vao chatroom
-			strcpy(title, message);
-			printf( "You have been invited to chatroom %s\n\n", title);
+			strcpy(topicName, message);
+			printf( "You have been invited to chatroom %s\n\n", topicName);
 		}
 		else if( command == '3' ) {			//3 -> tu minh join room thanh cong
-			strcpy(title, message);
-			printf( "You are now in chatroom %s.\n\n", title);
+			strcpy(topicName, message);
+			printf( "You are now in chatroom %s.\n\n", topicName);
 		}
 		else if( command == '4' ) {		//4 tuc la server chuan bi gui file cho minh
 			char fileName[NAME_SIZE];			
 			strncpy(fileName, message - 5, 5);
 			strcpy(fileName, message);
-			puts(fileName);
 			int bytesReceived = 0;
-		    	char recvBuff[256];
-		    	memset(recvBuff, '0', sizeof(recvBuff));
+	    	char recvBuff[256];
+	    	memset(recvBuff, '0', sizeof(recvBuff));
 			FILE *fp = fopen(fileName, "wb"); 
 		   	do {
-				  memset(recvBuff, 0, sizeof(recvBuff));
-			  	  bytesReceived = read(sockfd, recvBuff, sizeof(recvBuff));
-				  //printf("%d", bytesReceived);
-				  if( strcmp(recvBuff,"error") == 0 ){
-			      		memset(recvBuff, 0, sizeof(recvBuff));
-			      		printf("\nFile name doesn't exist in your server or invalid. \n");
-			      	  	continue;
-			      	  } else {
-				  	fwrite(recvBuff, 1,bytesReceived,fp);
-		      		  }
-		   	} while( bytesReceived >= 256 );	   
+				memset(recvBuff, 0, sizeof(recvBuff));
+				  bytesReceived = read(sockfd, recvBuff, sizeof(recvBuff));
+				if( strcmp(recvBuff,"error") == 0 ){
+					memset(recvBuff, 0, sizeof(recvBuff));
+					printf("\nFile name doesn't exist in your server or invalid. \n");
+					continue;
+				} else {
+					fwrite(recvBuff, 1,bytesReceived,fp);
+				}
+		   	} while( bytesReceived >= 256 );
+
 			fclose(fp);
-			if( bytesReceived < 0 ){
-			    	printf("Read Error \n");
-			}
 		}
-		
 		memset(message, 0, sizeof(message));
 	}
 	return 0;
 }
 
-void sendCommand( int sockfd, char command[2], int skip, char buffer[DATA_SIZE]) {
+void sendSingleVariable( int sockfd, char command[2], int skip, char buffer[DATA_SIZE]) {
 	char message[MTU];
 	strcpy(message, command);
 	strncpy(buffer, buffer + skip, strlen(buffer));
@@ -248,7 +242,7 @@ void sendCommand( int sockfd, char command[2], int skip, char buffer[DATA_SIZE])
 	write(sockfd, message, strlen(message));
 }
 
-void sendCommands( int sockfd, char command[2], int skip, char buffer[DATA_SIZE]) {
+void sendMultiVariables( int sockfd, char command[2], int skip, char buffer[DATA_SIZE]) {
 	char message[MTU];
 	strcpy(message, command);
 	strncpy(buffer, buffer + skip, strlen(buffer));
@@ -257,27 +251,26 @@ void sendCommands( int sockfd, char command[2], int skip, char buffer[DATA_SIZE]
 	write(sockfd, message, strlen(message));
 }
 
-void showMainMenuCommand() {
-	puts("\t@create <chatroom_name>			create a new chatroom");
-	puts("\t@join <chatroom_name>			join an existed chatroom");
+void showMainCommand() {
+	puts("\t@create <chatroom_name>		create a new chatroom");
+	puts("\t@join <chatroom_name>		join an existed chatroom");
 	puts("\t@listonline			list all users online");
 	puts("\t@listchatroom			list all chatroom");
 	puts("\t@help				list command");
-	puts("\t@out				leave chatroom");
 	puts("\t@exit				exit program\n");
 }
 
 void showTopicCommand() {
-	puts("\t@invite <user_name>			invite 1 or many user");
-	puts("\t@listonline			list all users online");
-	puts("\t@listuser			list all users in chatroom");
-	puts("\t@listfile			list all uploaded files in chatroom");
-	puts("\t@listchatroom			list all chatroom");
+	puts("\t@invite <username1> <username2>		invite 1 or many user");
+	puts("\t@listonline				list all users online");
+	puts("\t@listuser				list all users in chatroom");
+	puts("\t@listfile				list all uploaded files in chatroom");
+	puts("\t@listchatroom				list all chatroom");
 	puts("\t@upfile <file_name>			upload a file");
-	puts("\t@downfile <file_name>		download a file");
-	puts("\t@help				list command");
-	puts("\t@out				leave chatroom");
-	puts("\t@exit				exit program\n");
+	puts("\t@downfile <file_name>			download a file");
+	puts("\t@help					list command");
+	puts("\t@out					leave chatroom");
+	puts("\t@exit					exit program\n");
 }
 
 void sendFile( int sockfd, char buffer[NAME_SIZE] ) {
@@ -288,25 +281,24 @@ void sendFile( int sockfd, char buffer[NAME_SIZE] ) {
 	strcat(message, fileName);
 	write(sockfd, message, strlen(message));
 
-    	FILE *fp = fopen(fileName, "rb");
-    	if( fp == NULL ) {
-	        printf("File open error or not exist file.\n");
-	        write(sockfd, "error", sizeof("error"));
-    	} else {
-		int nread;
-		char contentFile[255] = {0};
-		do {
-	    		nread = fread(contentFile, 1, 256, fp);
-	    		write(sockfd, contentFile, nread);
-		} while( nread >= 256 );
-
-	        if( nread < 256 ){
-	            if( feof(fp) )
-	                printf("Send file successfull.\n");
-	            if( ferror(fp) )
-	                printf("Error reading file.\n");
-	        }
-    	fclose(fp);
+	FILE *fp = fopen(fileName, "rb");
+	if( fp == NULL ) {
+	    printf("File open error or not exist file.\n");
+	    write(sockfd, "error", sizeof("error"));
+	} else {
+	int nread;
+	char contentFile[255] = {0};
+	do {
+		nread = fread(contentFile, 1, 256, fp);
+		write(sockfd, contentFile, nread);
+	} while( nread >= 256 );
+    if( nread < 256 ){
+        if( feof(fp) )
+            printf("Send file successfull.\n");
+        if( ferror(fp) )
+            printf("Error reading file.\n");
+    }
+	fclose(fp);
     }
 }
 
@@ -321,10 +313,10 @@ void downFile( int sockfd, char buffer[NAME_SIZE] ) {
 }
 
 void commandPrompt() {
-	if( strcmp(title, "") == 0 ) {
+	if( strcmp(topicName, "") == 0 ) {
 		printf("Main>");
 	} else {
-		printf("%s>", title);
+		printf("%s>", topicName);
 	}
 }
 
@@ -332,11 +324,11 @@ char *nameStandardize(char str[MTU]) {
   	char *temp = malloc(NAME_SIZE);
   	int i, j = 0;
   	for( i = 0 ; i < strlen(str) ; i++ ) {
-    		if( str[i] != '\n' && str[i] != ' ' && str[i] != '\r' && str[i] != '\t' ) {
-	      		*(temp+j) = str[i];
-	      		j++;
-    		}
-    		if( j == 32 ) break;
+		if( str[i] != '\n' && str[i] != ' ' && str[i] != '\r' && str[i] != '\t' ) {
+      		*(temp+j) = str[i];
+      		j++;
+		}
+		if( j == 32 ) break;
   	}
   	return temp;
 }
@@ -356,9 +348,4 @@ char *stringStandardize(char str[MTU]) {
   	}
   	*(des + strlen(des) - 1) = '\0';
   	return des;
-}
-
-void delay(unsigned int mseconds) {
-    	clock_t goal = mseconds + clock();
-    	while( goal > clock() );
 }
