@@ -11,7 +11,6 @@
 #include <errno.h>
 #include <netdb.h>
 #include <sys/select.h>
-#include <time.h>
 
 //Static Define
 #define NAME_SIZE	32
@@ -40,17 +39,17 @@ pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 //Main Function
 int main( int argc, char *argv[] ) {
 	if( argc != 2 ) {
-		fprintf( stdin, "Enter IPv4 Address\n" );
+		fprintf(stdin, "Enter IPv4 Address\n");
 		exit(1);
 	}
-    
+
 	//Create a socket
 	int connfd = socket(AF_INET, SOCK_STREAM, 0);
 	if( connfd < 0 ) {
-		perror( "Error when create!\n" );
+		perror("Error when create!\n");
 		exit(1);
 	}else {
-		puts( "Socket created..." );	
+		puts("Socket created...");	
 	}
 
 	//Initialize sockaddr_in data structure
@@ -59,19 +58,19 @@ int main( int argc, char *argv[] ) {
 	serv_addr.sin_addr.s_addr = inet_addr(argv[1]);
 	serv_addr.sin_port = htons(PORT);
 
-	puts( "Connecting..." );
+	puts("Connecting...");
 	
 	//Attempt a connection
-	if( connect(connfd, (SA*)&serv_addr, sizeof(serv_addr))<0 ) {
-		perror( "Error: Connect Failed \n" );
+	if( connect(connfd, (SA*)&serv_addr, sizeof(serv_addr)) < 0 ) {
+		perror("Error: Connect Failed\n");
 		exit(1);
 	} else {
-		puts( "Connected\n" );
+		puts("Connected\n");
 	}
 	
 	char message[MTU];
 	for( ; ; ) {
-		printf( "Import username: " );
+		printf("Import username: ");
 		fgets(username, sizeof(username), stdin);
 		fflush(stdin);
 		strcpy(username, nameStandardize(username));
@@ -80,17 +79,17 @@ int main( int argc, char *argv[] ) {
 			memset(message, 0, sizeof(message));
 			read(connfd, message, sizeof(message));
 			if( strcmp(message, "Duplicate") == 0 ) {
-				puts( "Notification from server: Username is duplicate!\n" );
+				puts("Notification from server: Username is duplicate!\n");
 				memset(username, 0, sizeof(username));
 			} else {
-				puts( "Username accepted! You're online now!\n" );
+				puts("Username accepted! You're online now!\n");
 				break;
 			}
 		}
 	}
 
 	pthread_t send_tid, recv_tid;
-  	pthread_create(&recv_tid, NULL, &receiveHandler,(void *) &connfd);
+	pthread_create(&recv_tid, NULL, &receiveHandler,(void *) &connfd);
 	pthread_create(&send_tid, NULL, &sendHandler,(void *) &connfd);
 	pthread_join(recv_tid, NULL);
 	pthread_join(send_tid, NULL);
@@ -136,7 +135,7 @@ static void *sendHandler( void *connfd ) {
 					exit(1);
 				}
 				else {
-					puts( "--Invalid Command! Type @help!\n" );
+					puts("--Invalid Command! Type @help!\n");
 				}
 			}
 			else {									//Client da tham gia chatroom
@@ -180,7 +179,7 @@ static void *sendHandler( void *connfd ) {
 					strcat(message, ": ");
 					strcat(message, buffer);
 					write(sockfd, message, strlen(message));
-				}   
+				}
 			}
 		}
 	}
@@ -199,38 +198,36 @@ static void *receiveHandler( void *connfd ) {
 		}
 		else if( command == '1' ) {			//1 -> nhan command khi create chatroom thanh cong
 			strcpy(topicName, message);
-			printf( "Chatroom %s created success!\n", topicName);
-			printf( "\nYou are now in chatroom %s!\n", topicName);
+			printf("Chatroom %s created success!\n", topicName);
+			printf("\nYou are now in chatroom %s!\n", topicName);
 		}
 		else if( command == '2' ) {			//2 -> nhan command khi bi thang ngu nao do keo minh vao chatroom
 			strcpy(topicName, message);
-			printf( "\nYou have been invited to chatroom %s\n", topicName);
-			printf( "You are now in chatroom %s!\n", topicName);
+			printf("\nYou have been invited to chatroom %s\n", topicName);
+			printf("You are now in chatroom %s!\n", topicName);
 		}
 		else if( command == '3' ) {			//3 -> tu minh join room thanh cong
 			strcpy(topicName, message);
-			printf( "\nYou are now in chatroom %s!\n", topicName);
+			printf("\nYou are now in chatroom %s!\n", topicName);
 		}
 		else if( command == '4' ) {		//4 tuc la server chuan bi gui file cho minh
-			char fileName[NAME_SIZE];			
+			char fileName[NAME_SIZE];
 			strncpy(fileName, message - 5, 5);
 			strcpy(fileName, message);
 			int bytesReceived = 0;
-	    	char recvBuff[256];
-	    	memset(recvBuff, '0', sizeof(recvBuff));
+			char recvBuff[256];
 			FILE *fp = fopen(fileName, "wb"); 
-		   	do {
+			do {
 				memset(recvBuff, 0, sizeof(recvBuff));
 				  bytesReceived = read(sockfd, recvBuff, sizeof(recvBuff));
 				if( strcmp(recvBuff,"error") == 0 ){
 					memset(recvBuff, 0, sizeof(recvBuff));
-					printf("\nFile name doesn't exist in your server or invalid! \n");
+					puts("\nFile name doesn't exist in your server or invalid!");
 					continue;
 				} else {
 					fwrite(recvBuff, 1,bytesReceived,fp);
 				}
-		   	} while( bytesReceived >= 256 );
-
+			} while( bytesReceived >= 256 );
 			fclose(fp);
 		}
 		memset(message, 0, sizeof(message));
@@ -244,7 +241,7 @@ void sendSingleVariable( int sockfd, char command[2], int skip, char buffer[DATA
 	strncpy(buffer, buffer + skip, strlen(buffer));
 	strcpy(buffer, nameStandardize(buffer));
 	if( strlen(buffer) < 1 ) {
-		puts( "--Invalid Command!\n" );
+		puts("--Invalid Command!\n");
 		return;
 	}
 	strcat(message, buffer);
@@ -257,7 +254,7 @@ void sendMultiVariables( int sockfd, char command[2], int skip, char buffer[DATA
 	strncpy(buffer, buffer + skip, strlen(buffer));
 	strcpy(buffer, stringStandardize(buffer));
 	if( strlen(buffer) < 1 ) {
-		puts( "--Invalid Command!\n" );
+		puts("--Invalid Command!\n");
 		return;
 	}
 	strcat(message, buffer);
@@ -290,29 +287,31 @@ void sendFile( int sockfd, char buffer[NAME_SIZE] ) {
 	char fileName[DATA_SIZE];
 	strncpy(fileName, buffer + 8, strlen(buffer));
 	strcpy(fileName, nameStandardize(fileName));
-	char message[MTU] = "b";
-	strcat(message, fileName);
-	write(sockfd, message, strlen(message));
 
 	FILE *fp = fopen(fileName, "rb");
 	if( fp == NULL ) {
-	    printf("File open error or not exist file!\n");
-	    write(sockfd, "error", sizeof("error"));
+		printf("File %s doens't exist!\n", fileName);
 	} else {
-	int nread;
-	char contentFile[255] = {0};
-	do {
-		nread = fread(contentFile, 1, 256, fp);
-		write(sockfd, contentFile, nread);
-	} while( nread >= 256 );
-    if( nread < 256 ){
-        if( feof(fp) )
-            printf("Send file successfull!\n");
-        if( ferror(fp) )
-            printf("Error reading file!\n");
-    }
-	fclose(fp);
-    }
+		pthread_mutex_lock(&mutex);
+		char message[MTU] = "b";
+		strcat(message, fileName);
+		write(sockfd, message, strlen(message));
+
+		int nread;
+		char contentFile[255] = {0};
+		do {
+			nread = fread(contentFile, 1, 256, fp);
+			write(sockfd, contentFile, nread);
+		} while( nread >= 256 );
+		if( nread < 256 ) {
+			if( feof(fp) )
+				puts("Send file successfull!");
+			if( ferror(fp) )
+				puts("Error reading file!");
+		}
+		fclose(fp);
+		pthread_mutex_unlock(&mutex);
+	}
 }
 
 //downloadfile from server
@@ -322,7 +321,7 @@ void downFile( int sockfd, char buffer[NAME_SIZE] ) {
 	strcpy(fileName, nameStandardize(fileName));
 	char message[MTU] = "c";
 	strcat(message, fileName);
-	write(sockfd, message, strlen(message));	
+	write(sockfd, message, strlen(message));
 }
 
 void commandPrompt() {
@@ -334,31 +333,31 @@ void commandPrompt() {
 }
 
 char *nameStandardize(char str[MTU]) {
-  	char *temp = malloc(NAME_SIZE);
-  	int i, j = 0;
-  	for( i = 0 ; i < strlen(str) ; i++ ) {
+	char *temp = malloc(NAME_SIZE);
+	int i, j = 0;
+	for( i = 0 ; i < strlen(str) ; i++ ) {
 		if( str[i] != '\n' && str[i] != ' ' && str[i] != '\r' && str[i] != '\t' ) {
-      		*(temp+j) = str[i];
-      		j++;
+			*(temp+j) = str[i];
+			j++;
 		}
 		if( j == 32 ) break;
-  	}
-  	return temp;
+	}
+	return temp;
 }
 
 char *stringStandardize(char str[MTU]) {
-  	char *token, *src = malloc(MTU), *des = malloc(MTU);
-  	strcpy(src, str);
-  	token = strtok(src, " ");
-  	while( token != NULL ) {
-	    char temp[32];
-	    strcpy(temp, token);
-	    if( strcmp(nameStandardize(temp), "") != 0 ) {
-	      	strcat(des, nameStandardize(temp));
-	      	strcat(des, " ");
-	    }
-	    token = strtok(NULL, " ");
-  	}
-  	*(des + strlen(des) - 1) = '\0';
-  	return des;
+	char *token, *src = malloc(MTU), *des = malloc(MTU);
+	strcpy(src, str);
+	token = strtok(src, " ");
+	while( token != NULL ) {
+		char temp[32];
+		strcpy(temp, token);
+		if( strcmp(nameStandardize(temp), "") != 0 ) {
+			strcat(des, nameStandardize(temp));
+			strcat(des, " ");
+		}
+		token = strtok(NULL, " ");
+	}
+	*(des + strlen(des) - 1) = '\0';
+	return des;
 }

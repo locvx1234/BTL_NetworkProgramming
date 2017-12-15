@@ -7,9 +7,9 @@
 #include <sys/socket.h>		//??
 #include <unistd.h>			//write, read, close
 #include <pthread.h>		//pthread_create, pthread_detach
+
 #include <sys/stat.h>		//mkdir, rmdir
 #include <dirent.h>			//DIR, opendir
-#include <time.h>		//clock_t clock
 
 //Static Define
 #define NUMBER_OF_CLIENT	32
@@ -24,7 +24,7 @@
 //Struct Declare and Definition
 typedef struct Topic {
 	char topicName[NAME_SIZE];
-	int member[CLIENT_PER_TOPIC];		// socket file description of member 
+	int member[CLIENT_PER_TOPIC];		// socket file description of member
 	int countMember;
 	char file[MAX_FILE_PER_TOPIC][NAME_SIZE];
 	int countFile;
@@ -73,33 +73,33 @@ int main( int argc, char **argv ) {
 	//Socket()
 	int listenfd = socket(AF_INET, SOCK_STREAM, 0);
 	if ( listenfd < 0 ) {
-		perror( "Error when creating a listen socket!\n" );
+		perror("Error when creating a listen socket!\n");
 		exit(1);
 	} else {
-		printf( "Socket created!\n" );
+		puts("Socket created!");
 	}
 	
 	//Server IP and Port
 	struct sockaddr_in servaddr;
-	memset((char*)&servaddr, 0, sizeof(servaddr));     
+	memset((char*)&servaddr, 0, sizeof(servaddr));
 	servaddr.sin_family 	 = AF_INET;
 	servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
 	servaddr.sin_port 	 = htons(PORT);
 	
 	//Bind()
 	if( bind(listenfd, (SA*)&servaddr, sizeof(servaddr)) < 0 ) {
-		perror( "ERROR when binding!\n" );
+		perror("ERROR when binding!\n");
 		exit(1);
 	} else {
-		printf( "Bind success!\n" );
+		puts("Bind success!");
 	}
 	
 	//Listen()
 	if( listen(listenfd, NUMBER_OF_CLIENT) < 0 ) {
-		perror( "ERROR when listening!\n" );
+		perror("ERROR when listening!\n");
 		exit(1);
 	} else {
-		printf( "Running...\n\n" );
+		puts( "Running...\n" );
 	}
 	
 	//Accept()
@@ -108,16 +108,16 @@ int main( int argc, char **argv ) {
 	socklen_t clilen = sizeof(cliaddr);
 	pthread_t tid;
 	for( ; ; ) {
-		char message[MTU]="";
+		char message[MTU] = "";
 		connfd = malloc(sizeof(int));
 		*connfd = accept(listenfd, (SA*)&cliaddr, &clilen);
-		printf( "IP %s , port %d \n", inet_ntoa(cliaddr.sin_addr), cliaddr.sin_port );
+		printf("IPv4 Address: %s, Port: %d\n", inet_ntoa(cliaddr.sin_addr), cliaddr.sin_port);
 		while( read(*connfd, message, sizeof(message)) > 0 ) {  //Nhan goi tin chua username tu client moi
 			if( getClientByName(message) == NULL ) {
-				write(*connfd, "OK", 2);
+				write(*connfd, "OK", strlen("OK"));
 				break;
 			} else {
-				write(*connfd, "Duplicate", 9);
+				write(*connfd, "Duplicate", strlen("Duplicate"));
 			}
 			memset(message, 0, sizeof(message));
 		}
@@ -174,10 +174,14 @@ static void *doit( void *connfd ) {
 			clientExit(sockfd);
 		}
 		else if(command == 'b' ) {		//@upfile
+			pthread_mutex_lock(&mutex);
 			upFile(sockfd, message);
+			pthread_mutex_unlock(&mutex);
 		}
 		else if (command == 'c' ) {		//@downfile
+			pthread_mutex_lock(&mutex);
 			downFile(sockfd, message);
+			pthread_mutex_unlock(&mutex);
 		}
 		memset(message, 0, sizeof(message));
 	}
@@ -292,6 +296,8 @@ void addClient( int sockfd, char username[NAME_SIZE] ) {
 }
 
 Client *deleteClient( int sockfd ) {
+	Client *tmpClient = getClientBySocket(sockfd);
+	printf("Client %s deleted!\n", tmpClient->username);
 	if (clients == NULL) {
 		return NULL;
 	}
@@ -310,7 +316,6 @@ Client *deleteClient( int sockfd ) {
 	} else {
 		previous->next = current->next;
 	}
-	printf("Client deleted!\n");
 	return current;
 }
 
@@ -331,7 +336,7 @@ void createTopic( int sockfd, char topicName[NAME_SIZE] ) {
 		Client *tmpClient = getClientBySocket(sockfd);
 		strcpy(tmpClient->topicName, topicName);
 		char path[NAME_SIZE+4] = "./";
-		mkdir(strcat(path, topicName), 0777);	
+		mkdir(strcat(path, topicName), 0777);
 		printf("Chatroom %s created!\n", topicName);
 		sprintf(message, "1%s", topicName);
 	}
@@ -344,20 +349,20 @@ Topic *deleteTopic( char topicName[NAME_SIZE] ) {
 	deleteFolder(path);
 	Topic *current = topics;
 	Topic *previous = NULL;
+	printf("Chatroom %s is deleted!\n", topicName);
 	while (!strcmp(current->topicName, topicName)) {
 		if (current->next == NULL) {
-			printf("Chatroom %s is deleted!\n", topicName);
  			return NULL;
 		} else {
  			previous = current;
  			current = current->next;
 		}
 	}
-	if (current == topics)
+	if (current == topics) {
 		topics = topics->next;
-	else
+	} else {
 		previous->next = current->next;
-	printf("Chatroom %s is deleted!\n", topicName);
+	}
 	return current;
 }
 
@@ -502,7 +507,7 @@ void clientExit( int sockfd ) {
 	if( strcmp(getClientBySocket(sockfd)->topicName, "") != 0 )  {
 			clientOut(sockfd);
 	}
-	deleteClient(sockfd);
+	clients = deleteClient(sockfd);
 	close(sockfd);
 }
 
@@ -513,23 +518,13 @@ void upFile( int sockfd, char filename[NAME_SIZE] ) {
 	strcat(path, filename);
 
 	int bytesReceived = 0;
-     	char recvBuff[256];
-	FILE *fp = fopen(path, "wb"); 
+ 	char recvBuff[256];
+	FILE *fp = fopen(path, "wb");
    	do {
-		  memset(recvBuff, 0, sizeof(recvBuff));
-	  	  bytesReceived = read(sockfd, recvBuff, sizeof(recvBuff));
-		  if( strcmp(recvBuff,"error") == 0 ){
-	      		memset(recvBuff, 0, sizeof(recvBuff));
-	      		printf("File name doesn't exist in your server or invalid. \n");
-	      	  	continue;
-	          } else {
-	          	fwrite(recvBuff,1, bytesReceived, fp);
-        	  }
-   	} while( bytesReceived >= 256 );	   
-   	fclose(fp);     
-        if( bytesReceived < 0 ){
-	    printf("Read Error \n");
-        }
+		memset(recvBuff, 0, sizeof(recvBuff));
+		fwrite(recvBuff, 1, bytesReceived, fp);
+	} while( bytesReceived >= 256 );
+   	fclose(fp);
 }
 
 void downFile( int sockfd, char filename[NAME_SIZE] ) {
@@ -545,7 +540,7 @@ void downFile( int sockfd, char filename[NAME_SIZE] ) {
 	FILE *fp = fopen(path, "rb");
 	if( fp == NULL )
 	{
-	 	printf("File open error or not exist file.\n");
+	 	puts("File open error or not exist file!");
 	 	write(sockfd, "error", sizeof("error"));
 	} else {
 		int nread;
@@ -556,10 +551,11 @@ void downFile( int sockfd, char filename[NAME_SIZE] ) {
 		} while( nread >= sizeof(contentfile) );
 		if ( nread < 256 ){
 		     if ( feof(fp) )
-			 printf("Send file successfull.\n");
+			 puts("Send file successfull!");
 		     if ( ferror(fp) )
-			 printf("Error reading file.\n");
+			 puts("Error reading file!");
 		 }
 	}
 	fclose(fp);
 }
+
