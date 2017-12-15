@@ -396,7 +396,7 @@ void inviteClient( int sockfd, char message[MTU] ) {
 		}
 		write(sockfd, buffer, strlen(buffer));
         targetName = strtok(NULL, " ");
-        sleep(1);
+        usleep(500);
     }
 }
 
