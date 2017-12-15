@@ -23,8 +23,8 @@
 
 //Struct Declare and Definition
 typedef struct Topic {
-	char title[NAME_SIZE];
-	int member[CLIENT_PER_TOPIC];
+	char topicName[NAME_SIZE];
+	int member[CLIENT_PER_TOPIC];		// socket file description of member 
 	int countMember;
 	char file[MAX_FILE_PER_TOPIC][NAME_SIZE];
 	int countFile;
@@ -34,34 +34,34 @@ typedef struct Topic {
 typedef struct Client {
 	int sockfd;
 	char username[NAME_SIZE];
-	char title[NAME_SIZE];
+	char topicName[NAME_SIZE];
 	struct Client *next;
 } Client;
 
 //Function Declare
 static void *doit( void *connfd );
-Topic *getTopicByTitle( char title[NAME_SIZE] );
+Topic *getTopicByTopicName( char topicName[NAME_SIZE] );
 Client *getClientBySocket( int sockfd );
 Client *getClientByName( char username[NAME_SIZE] );
-int joinRoom( int sockfd, char title[NAME_SIZE] );
-int buildListFileInFolder( char *listFile[], const char *path );
+int joinRoom( int sockfd, char topicName[NAME_SIZE] );
+int buildListFile( char *listFile[], const char *path );
 void deleteFolder( const char *path );
 
-void clientSendAll( int sockfd, char message[MTU] );					//a
+void sendToAllClient( int sockfd, char message[MTU] );					//a
 void addClient( int sockfd, char username[NAME_SIZE] );				//-1
 Client *deleteClient( int sockfd );
-void createTopic( int sockfd, char title[NAME_SIZE] );				//0
-Topic *deleteTopic( char title[NAME_SIZE] );
+void createTopic( int sockfd, char topicName[NAME_SIZE] );				//0
+Topic *deleteTopic( char topicName[NAME_SIZE] );
 void inviteClient( int sockfd, char message[MTU] );					//1
-void clientJoin( int sockfd, char title[NAME_SIZE] );				//2
+void clientJoin( int sockfd, char topicName[NAME_SIZE] );				//2
 void sendListOnline( int sockfd );									//3
 void sendListUser( int sockfd );									//4
 void sendListFile( int sockfd );									//5
 void sendListTopic( int sockfd );									//6
 void clientOut( int sockfd );										//8
 void clientExit( int sockfd );										//9
-void getFileFromClient( int sockfd, char filename[NAME_SIZE] );		//b
-void sendFileToClient( int sockfd, char filename[NAME_SIZE] );		//c
+void upFile( int sockfd, char filename[NAME_SIZE] );		//b
+void downFile( int sockfd, char filename[NAME_SIZE] );		//c
 
 //Global Variable
 Client *clients = NULL;
@@ -107,20 +107,20 @@ int main( int argc, char **argv ) {
 	struct sockaddr_in cliaddr;
 	socklen_t clilen = sizeof(cliaddr);
 	pthread_t tid;
-	char message[MTU];
+	char message[MTU]="";
 	for( ; ; ) {
 		connfd = malloc(sizeof(int));
 		*connfd = accept(listenfd, (SA*)&cliaddr, &clilen);
 		printf( "IP %s , port %d \n", inet_ntoa(cliaddr.sin_addr), cliaddr.sin_port );
-		for( ; ; ) {
-			memset(message, 0, sizeof(message));
-			read(*connfd, message, sizeof(message));	//Nhan goi tin chua username tu client moi
+		while( read(*connfd, message, sizeof(message)) > 0 ) {  //Nhan goi tin chua username tu client moi
+	
 			if( getClientByName(message) == NULL ) {
 				write(*connfd, "OK", 2);
 				break;
 			} else {
 				write(*connfd, "Duplicate", 9);
 			}
+			memset(message, 0, sizeof(message));
 		}
 		pthread_mutex_lock(&mutex);
 		addClient(*connfd, message);					//Goi den ham cho client moi vao danh sach luu tru
@@ -137,16 +137,14 @@ static void *doit( void *connfd ) {
 	free(connfd);
 	pthread_detach(pthread_self());
 	
-	char message[MTU];
-	for( ; ; ) {
-		memset(message, 0, sizeof(message));
-		read(sockfd, message, sizeof(message));
+	char message[MTU]="";
+	while( read(sockfd, message, sizeof(message)) > 0 ) {
 		char command = message[0];
 		strncpy(message, message+1, strlen(message));
 		if( command == 'a' ) {		//@chat
 			char msgChat[MTU] = "0";
 			strcat(msgChat, message);
-			clientSendAll(sockfd, msgChat);
+			sendToAllClient(sockfd, msgChat);
 		}
 		else if( command == '0' ) {		//@create. Tao room chat.
 			createTopic(sockfd, message);
@@ -179,23 +177,24 @@ static void *doit( void *connfd ) {
 			clientExit(sockfd);
 		}
 		else if(command == 'b' ) {		//@upfile
-			getFileFromClient(sockfd, message);
+			upFile(sockfd, message);
 		}
-		else if (command == 'c' ) {		//@getFileFromClient
-			sendFileToClient(sockfd, message);
+		else if (command == 'c' ) {		//@downfile
+			downFile(sockfd, message);
 		}
+		memset(message, 0, sizeof(message));
 	}
 
 	close(sockfd);
 	return NULL;
 }
 
-Topic *getTopicByTitle( char title[NAME_SIZE] ) {
+Topic *getTopicByTopicName( char topicName[NAME_SIZE] ) {
 	if( topics == NULL ) {
 		return NULL;
 	}
 	Topic *tmpTopic = topics;
-	while( strcmp(tmpTopic->title, title) != 0 ) {
+	while( strcmp(tmpTopic->topicName, topicName) != 0 ) {
 		if( tmpTopic->next == NULL ) {
 			return NULL;
 		} else {
@@ -225,8 +224,8 @@ Client *getClientByName( char username[NAME_SIZE] ) {
 	return NULL;
 }
 
-int joinRoom(int sockfd, char title[NAME_SIZE]) {
-	Topic *tmpTopic = getTopicByTitle(title);
+int joinRoom(int sockfd, char topicName[NAME_SIZE]) {
+	Topic *tmpTopic = getTopicByTopicName(topicName);
 	if( tmpTopic == NULL ) {					//return 1 nghia la khong tim thay chatroom
 		return 1;
 	} else if( tmpTopic->countMember == NUMBER_OF_CLIENT ) {
@@ -235,12 +234,12 @@ int joinRoom(int sockfd, char title[NAME_SIZE]) {
 		tmpTopic->member[tmpTopic->countMember] = sockfd;
 		tmpTopic->countMember++;
 		Client *tmpClient = getClientBySocket(sockfd);
-		strcpy(tmpClient->title, title);
+		strcpy(tmpClient->topicName, topicName);
 		return 0;								//return 0 nghia la join chatroom thanh cong
 	}
 }
 
-int buildListFileInFolder( char *listFile[], const char *path ) {
+int buildListFile( char *listFile[], const char *path ) {
 	DIR *d = opendir(path);
 	int i = 0;
 	if( d ) {
@@ -262,7 +261,7 @@ void deleteFolder( const char *path ) {
 		return;
 	}
 	char *listFile[NAME_SIZE];
-	int countFile = buildListFileInFolder(listFile, path);
+	int countFile = buildListFile(listFile, path);
 	int i = 0;
 	for( i = 0; i < countFile; i++ ) {
 		char *link;
@@ -275,8 +274,8 @@ void deleteFolder( const char *path ) {
 	rmdir(path);
 }
 
-void clientSendAll( int sockfd, char message[MTU] ) {
-	Topic *tmpTopic = getTopicByTitle(getClientBySocket(sockfd)->title);
+void sendToAllClient( int sockfd, char message[MTU] ) {
+	Topic *tmpTopic = getTopicByTopicName(getClientBySocket(sockfd)->topicName);
 	int i;
 	for( i = 0; i < tmpTopic->countMember; i++ ) {
 		if( sockfd != tmpTopic->member[i] ) {
@@ -289,7 +288,7 @@ void addClient( int sockfd, char username[NAME_SIZE] ) {
 	Client *tmpClient = (Client*)malloc(sizeof(Client));
 	tmpClient->sockfd = sockfd;
 	strcpy(tmpClient->username, username);
-	strcpy(tmpClient->title, "");
+	strcpy(tmpClient->topicName, "");
 	tmpClient->next = clients;
 	clients = tmpClient;
 	printf("Client %s created!\n", username);
@@ -318,39 +317,39 @@ Client *deleteClient( int sockfd ) {
 	return current;
 }
 
-void createTopic( int sockfd, char title[NAME_SIZE] ) {
-	Topic *tmpTopic = getTopicByTitle(title);
+void createTopic( int sockfd, char topicName[NAME_SIZE] ) {
+	Topic *tmpTopic = getTopicByTopicName(topicName);
 	char message[MTU];
 	if( tmpTopic != NULL ) {
 		strcpy(message, "0Your chatroom name is already existed!");
 		
 	} else {
 		tmpTopic = (Topic *)malloc(sizeof(Topic));
-		strcpy(tmpTopic->title, title);
+		strcpy(tmpTopic->topicName, topicName);
 		tmpTopic->member[0] = sockfd;
 		tmpTopic->countMember = 1;
 		tmpTopic->countFile = 0;
 		tmpTopic->next = topics;
 		topics = tmpTopic;
 		Client *tmpClient = getClientBySocket(sockfd);
-		strcpy(tmpClient->title, title);
+		strcpy(tmpClient->topicName, topicName);
 		char path[NAME_SIZE+4] = "./";
-		mkdir(strcat(path, title), 0777);	
-		printf("Chatroom %s created!\n", title);
-		sprintf(message, "1%s", title);
+		mkdir(strcat(path, topicName), 0777);	
+		printf("Chatroom %s created!\n", topicName);
+		sprintf(message, "1%s", topicName);
 	}
 	write(sockfd, message, strlen(message));
 }
 
-Topic *deleteTopic( char title[NAME_SIZE] ) {
+Topic *deleteTopic( char topicName[NAME_SIZE] ) {
 	char path[NAME_SIZE+4] = "./";
-	strcat(path, title);
+	strcat(path, topicName);
 	deleteFolder(path);
 	Topic *current = topics;
 	Topic *previous = NULL;
-	while (!strcmp(current->title, title)) {
+	while (!strcmp(current->topicName, topicName)) {
 		if (current->next == NULL) {
-			printf("Chatroom %s is deleted!\n", title);
+			printf("Chatroom %s is deleted!\n", topicName);
  			return NULL;
 		} else {
  			previous = current;
@@ -361,12 +360,12 @@ Topic *deleteTopic( char title[NAME_SIZE] ) {
 		topics = topics->next;
 	else
 		previous->next = current->next;
-	printf("Chatroom %s is deleted!\n", title);
+	printf("Chatroom %s is deleted!\n", topicName);
 	return current;
 }
 
 void inviteClient( int sockfd, char message[MTU] ) {
-	Topic *tmpTopic = getTopicByTitle(getClientBySocket(sockfd)->title);
+	Topic *tmpTopic = getTopicByTopicName(getClientBySocket(sockfd)->topicName);
 	char buffer[MTU];
 	char *targetName ;
     	targetName = strtok(message, " ");
@@ -374,10 +373,10 @@ void inviteClient( int sockfd, char message[MTU] ) {
     		memset(buffer, 0, sizeof(buffer));
 		Client *targetClient = getClientByName(targetName);
 		if( targetClient != NULL ){
-			if( strcmp(targetClient->title, "") == 0 ) {
-				int check = joinRoom(targetClient->sockfd, tmpTopic->title);
+			if( strcmp(targetClient->topicName, "") == 0 ) {
+				int check = joinRoom(targetClient->sockfd, tmpTopic->topicName);
 				if( check == 0 ) {			// invite success
-					sprintf(buffer, "2%s", tmpTopic->title);
+					sprintf(buffer, "2%s", tmpTopic->topicName);
 					write(targetClient->sockfd, buffer, strlen(buffer));				
 					memset(buffer, 0, sizeof(buffer));
 					sprintf(buffer, "0Invite user %s success!\n", targetName);
@@ -385,10 +384,10 @@ void inviteClient( int sockfd, char message[MTU] ) {
 					sprintf(buffer, "0Invite user %s fail because this chatroom is full!\n", targetName);
 				}
 			} else {
-				if( strcmp(targetClient->title, tmpTopic->title) == 0 ){
+				if( strcmp(targetClient->topicName, tmpTopic->topicName) == 0 ){
 					sprintf(buffer, "0User %s is already in this chatroom!\n", targetName);
 				} else {
-					sprintf(buffer, "0User %s is in chatroom %s!\n", targetName, targetClient->title);
+					sprintf(buffer, "0User %s is in chatroom %s!\n", targetName, targetClient->topicName);
 				}
 			}
 		} else {
@@ -400,22 +399,22 @@ void inviteClient( int sockfd, char message[MTU] ) {
     }
 }
 
-void clientJoin( int sockfd, char title[NAME_SIZE] ) {
-	int check = joinRoom(sockfd, title);
+void clientJoin( int sockfd, char topicName[NAME_SIZE] ) {
+	int check = joinRoom(sockfd, topicName);
 	char message[MTU];
 	if (check == 1) {			//1 nghia la ko tim thay chatroom nao co ten nhu the de join
-		sprintf(message, "0Chatroom %s doesn't exist!\n", title);
+		sprintf(message, "0Chatroom %s doesn't exist!\n", topicName);
 		write(sockfd, message, strlen(message));
 	} else if (check == 2) {	//2 nghia la chatroom muon join full nguoi cmnr
-		sprintf(message, "0Chatroom %s is full!\n", title);
+		sprintf(message, "0Chatroom %s is full!\n", topicName);
 		write(sockfd, message, strlen(message));
 	} else if (check == 0) {	//0 nghia la join room thanh cong roi
-		sprintf(message, "3%s", title);
+		sprintf(message, "3%s", topicName);
 		write(sockfd, message, strlen(message));
 		Client *tmpClient = getClientBySocket(sockfd);
 		memset(message, 0, sizeof(message));
 		sprintf(message, "0\n%s has join this chatroom!\n", tmpClient->username);
-		clientSendAll(sockfd, message);
+		sendToAllClient(sockfd, message);
 	}
 }
 
@@ -431,7 +430,7 @@ void sendListOnline( int sockfd ){
 }
 
 void sendListUser( int sockfd ){
-	Topic *tmpTopic = getTopicByTitle(getClientBySocket(sockfd)->title);
+	Topic *tmpTopic = getTopicByTopicName(getClientBySocket(sockfd)->topicName);
 	char message[MTU] = "0List user in this chatroom:";
 	int i;
 	for( i = 0 ; i < tmpTopic->countMember ; i++ ){
@@ -445,8 +444,8 @@ void sendListUser( int sockfd ){
 void sendListFile( int sockfd ) {
 	char *listFile[NAME_SIZE];
 	char path[NAME_SIZE + 4] = "./";
-	strcat(path, getClientBySocket(sockfd)->title);
-	int countFile = buildListFileInFolder(listFile, path);
+	strcat(path, getClientBySocket(sockfd)->topicName);
+	int countFile = buildListFile(listFile, path);
 	char message[MTU];
 	if( countFile == 0 ) {
 		strcpy(message, "0No files yet!");
@@ -470,7 +469,7 @@ void sendListTopic( int sockfd ) {
 		strcpy(message, "0List chatrooms:");
 		for( tmpTopic = topics ; tmpTopic != NULL ; tmpTopic = tmpTopic->next ) {
 			strcat(message, "\n---");
-			strcat(message, tmpTopic->title);
+			strcat(message, tmpTopic->topicName);
 		}
 		strcat(message, "\n");
 	}
@@ -479,13 +478,13 @@ void sendListTopic( int sockfd ) {
 
 void clientOut( int sockfd ) {
 	Client *tmpClient = getClientBySocket(sockfd);
-	Topic *tmpTopic = getTopicByTitle(tmpClient->title);
+	Topic *tmpTopic = getTopicByTopicName(tmpClient->topicName);
 	if( tmpTopic->countMember == 1 ) {
-		topics = deleteTopic(tmpTopic->title);
+		topics = deleteTopic(tmpTopic->topicName);
 	} else {
 		char buffer[DATA_SIZE];
 		sprintf(buffer, "0\n%s has left this chatroom!\n", tmpClient->username);
-		clientSendAll(sockfd, buffer);
+		sendToAllClient(sockfd, buffer);
 		int i, n = tmpTopic->countMember;
 		for( i = 0; i < n; i++ ) {
 			if( tmpTopic->member[i] == sockfd ) {
@@ -499,20 +498,20 @@ void clientOut( int sockfd ) {
 		}
 		tmpTopic->countMember--;
 	}
-	strcpy(tmpClient->title, "");
+	strcpy(tmpClient->topicName, "");
 }
 
 void clientExit( int sockfd ) {
-	if( strcmp(getClientBySocket(sockfd)->title, "") != 0 )  {
+	if( strcmp(getClientBySocket(sockfd)->topicName, "") != 0 )  {
 			clientOut(sockfd);
 	}
 	deleteClient(sockfd);
 	close(sockfd);
 }
 
-void getFileFromClient( int sockfd, char filename[NAME_SIZE] ) {
+void upFile( int sockfd, char filename[NAME_SIZE] ) {
 	char path[NAME_SIZE + 4] = "./";
-	strcat(path, getClientBySocket(sockfd)->title);
+	strcat(path, getClientBySocket(sockfd)->topicName);
 	strcat(path, "/");
 	strcat(path, filename);
 
@@ -536,12 +535,12 @@ void getFileFromClient( int sockfd, char filename[NAME_SIZE] ) {
         }
 }
 
-void sendFileToClient( int sockfd, char filename[NAME_SIZE] ) {
+void downFile( int sockfd, char filename[NAME_SIZE] ) {
 	char message[MTU] = "4";
 	strcat(message, filename);
 	write(sockfd, message, strlen(message));
 	char path[NAME_SIZE + 4] = "./";
-	strcat(path, getClientBySocket(sockfd)->title);
+	strcat(path, getClientBySocket(sockfd)->topicName);
 	strcat(path, "/");
 	strcat(path, filename);
 	puts(filename);
