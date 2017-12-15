@@ -103,6 +103,8 @@ static void *sendHandler( void *connfd ) {
 	int sockfd = *((int*)connfd);
 	char buffer[DATA_SIZE];
 	for( ; ; ) {
+		usleep(500);
+		commandPrompt();
 		memset(buffer, 0, sizeof(buffer));
 		fgets(buffer, sizeof(buffer), stdin);	//Client nhap lenh, hoac nhap cau chat
 		fflush(stdin);
@@ -198,14 +200,16 @@ static void *receiveHandler( void *connfd ) {
 		else if( command == '1' ) {			//1 -> nhan command khi create chatroom thanh cong
 			strcpy(topicName, message);
 			printf( "Chatroom %s created success!\n", topicName);
+			printf( "\nYou are now in chatroom %s!\n", topicName);
 		}
 		else if( command == '2' ) {			//2 -> nhan command khi bi thang ngu nao do keo minh vao chatroom
 			strcpy(topicName, message);
-			printf( "You have been invited to chatroom %s\n\n", topicName);
+			printf( "\nYou have been invited to chatroom %s\n", topicName);
+			printf( "You are now in chatroom %s!\n", topicName);
 		}
 		else if( command == '3' ) {			//3 -> tu minh join room thanh cong
 			strcpy(topicName, message);
-			printf( "You are now in chatroom %s!\n\n", topicName);
+			printf( "\nYou are now in chatroom %s!\n", topicName);
 		}
 		else if( command == '4' ) {		//4 tuc la server chuan bi gui file cho minh
 			char fileName[NAME_SIZE];			
@@ -324,9 +328,9 @@ void downFile( int sockfd, char buffer[NAME_SIZE] ) {
 void commandPrompt() {
 	if( strcmp(topicName, "") == 0 ) {
 		printf("Main>");
-	} else {
+	}/* else {
 		printf("%s>", topicName);
-	}
+	}*/
 }
 
 char *nameStandardize(char str[MTU]) {
