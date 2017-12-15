@@ -552,7 +552,7 @@ void sendFileToClient( int sockfd, char filename[NAME_SIZE] ) {
 	strcat(path, filename);
 	puts(filename);
 	puts(path);
-	FILE *fp = fopen(filename, "rb");
+	FILE *fp = fopen(path, "rb");
 	if( fp == NULL )
 	{
 	 	printf("File open error or not exist file.\n");
