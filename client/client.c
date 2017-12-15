@@ -134,7 +134,7 @@ static void *sendHandler( void *connfd ) {
 					exit(1);
 				}
 				else {
-					puts( "--Invalid Command. Type @help.\n" );
+					puts( "--Invalid Command! Type @help!\n" );
 				}
 			}
 			else {									//Client da tham gia chatroom
@@ -205,7 +205,7 @@ static void *receiveHandler( void *connfd ) {
 		}
 		else if( command == '3' ) {			//3 -> tu minh join room thanh cong
 			strcpy(topicName, message);
-			printf( "You are now in chatroom %s.\n\n", topicName);
+			printf( "You are now in chatroom %s!\n\n", topicName);
 		}
 		else if( command == '4' ) {		//4 tuc la server chuan bi gui file cho minh
 			char fileName[NAME_SIZE];			
@@ -220,7 +220,7 @@ static void *receiveHandler( void *connfd ) {
 				  bytesReceived = read(sockfd, recvBuff, sizeof(recvBuff));
 				if( strcmp(recvBuff,"error") == 0 ){
 					memset(recvBuff, 0, sizeof(recvBuff));
-					printf("\nFile name doesn't exist in your server or invalid. \n");
+					printf("\nFile name doesn't exist in your server or invalid! \n");
 					continue;
 				} else {
 					fwrite(recvBuff, 1,bytesReceived,fp);
@@ -238,7 +238,12 @@ void sendSingleVariable( int sockfd, char command[2], int skip, char buffer[DATA
 	char message[MTU];
 	strcpy(message, command);
 	strncpy(buffer, buffer + skip, strlen(buffer));
-	strcat(message, nameStandardize(buffer));
+	strcpy(buffer, nameStandardize(buffer));
+	if( strlen(buffer) < 1 ) {
+		puts( "--Invalid Command!\n" );
+		return;
+	}
+	strcat(message, buffer);
 	write(sockfd, message, strlen(message));
 }
 
@@ -247,6 +252,10 @@ void sendMultiVariables( int sockfd, char command[2], int skip, char buffer[DATA
 	strcpy(message, command);
 	strncpy(buffer, buffer + skip, strlen(buffer));
 	strcpy(buffer, stringStandardize(buffer));
+	if( strlen(buffer) < 1 ) {
+		puts( "--Invalid Command!\n" );
+		return;
+	}
 	strcat(message, buffer);
 	write(sockfd, message, strlen(message));
 }
@@ -283,7 +292,7 @@ void sendFile( int sockfd, char buffer[NAME_SIZE] ) {
 
 	FILE *fp = fopen(fileName, "rb");
 	if( fp == NULL ) {
-	    printf("File open error or not exist file.\n");
+	    printf("File open error or not exist file!\n");
 	    write(sockfd, "error", sizeof("error"));
 	} else {
 	int nread;
@@ -294,9 +303,9 @@ void sendFile( int sockfd, char buffer[NAME_SIZE] ) {
 	} while( nread >= 256 );
     if( nread < 256 ){
         if( feof(fp) )
-            printf("Send file successfull.\n");
+            printf("Send file successfull!\n");
         if( ferror(fp) )
-            printf("Error reading file.\n");
+            printf("Error reading file!\n");
     }
 	fclose(fp);
     }

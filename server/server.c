@@ -107,13 +107,12 @@ int main( int argc, char **argv ) {
 	struct sockaddr_in cliaddr;
 	socklen_t clilen = sizeof(cliaddr);
 	pthread_t tid;
-	char message[MTU]="";
 	for( ; ; ) {
+		char message[MTU]="";
 		connfd = malloc(sizeof(int));
 		*connfd = accept(listenfd, (SA*)&cliaddr, &clilen);
 		printf( "IP %s , port %d \n", inet_ntoa(cliaddr.sin_addr), cliaddr.sin_port );
 		while( read(*connfd, message, sizeof(message)) > 0 ) {  //Nhan goi tin chua username tu client moi
-	
 			if( getClientByName(message) == NULL ) {
 				write(*connfd, "OK", 2);
 				break;
@@ -122,9 +121,7 @@ int main( int argc, char **argv ) {
 			}
 			memset(message, 0, sizeof(message));
 		}
-		pthread_mutex_lock(&mutex);
 		addClient(*connfd, message);					//Goi den ham cho client moi vao danh sach luu tru
-		pthread_mutex_unlock(&mutex);
 		pthread_create(&tid, NULL, &doit, (void*)connfd);
 	}
 
@@ -368,11 +365,11 @@ void inviteClient( int sockfd, char message[MTU] ) {
 	Topic *tmpTopic = getTopicByTopicName(getClientBySocket(sockfd)->topicName);
 	char buffer[MTU];
 	char *targetName ;
-    	targetName = strtok(message, " ");
-    	while( targetName != NULL) {
-    		memset(buffer, 0, sizeof(buffer));
+    targetName = strtok(message, " ");
+    while( targetName != NULL) {
+    	memset(buffer, 0, sizeof(buffer));
 		Client *targetClient = getClientByName(targetName);
-		if( targetClient != NULL ){
+		if( targetClient != NULL ) {
 			if( strcmp(targetClient->topicName, "") == 0 ) {
 				int check = joinRoom(targetClient->sockfd, tmpTopic->topicName);
 				if( check == 0 ) {			// invite success
