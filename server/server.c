@@ -108,20 +108,11 @@ int main( int argc, char **argv ) {
 	socklen_t clilen = sizeof(cliaddr);
 	pthread_t tid;
 	for( ; ; ) {
-		char message[MTU] = "";
+		
 		connfd = malloc(sizeof(int));
 		*connfd = accept(listenfd, (SA*)&cliaddr, &clilen);
 		printf("IPv4 Address: %s, Port: %d\n", inet_ntoa(cliaddr.sin_addr), cliaddr.sin_port);
-		while( read(*connfd, message, sizeof(message)) > 0 ) {  //Nhan goi tin chua username tu client moi
-			if( getClientByName(message) == NULL ) {
-				write(*connfd, "OK", strlen("OK"));
-				break;
-			} else {
-				write(*connfd, "Duplicate", strlen("Duplicate"));
-			}
-			memset(message, 0, sizeof(message));
-		}
-		addClient(*connfd, message);					//Goi den ham cho client moi vao danh sach luu tru
+		
 		pthread_create(&tid, NULL, &doit, (void*)connfd);
 	}
 
@@ -133,8 +124,20 @@ static void *doit( void *connfd ) {
 	int sockfd = *((int*)connfd);
 	free(connfd);
 	pthread_detach(pthread_self());
-	
-	char message[MTU]="";
+	char message[MTU] = "";
+	while( read(sockfd, message, sizeof(message)) > 0 ) {  //Nhan goi tin chua username tu client moi
+		if( getClientByName(message) == NULL ) {
+			write(sockfd, "OK", strlen("OK"));
+			break;
+		} else {
+			write(sockfd, "Duplicate", strlen("Duplicate"));
+		}
+		memset(message, 0, sizeof(message));
+	}
+	addClient(sockfd, message);					//Goi den ham cho client moi vao danh sach luu tru
+
+	memset(message, 0, sizeof(message));
+
 	while( read(sockfd, message, sizeof(message)) > 0 ) {
 		char command = message[0];
 		strncpy(message, message+1, strlen(message));
@@ -503,7 +506,7 @@ void clientExit( int sockfd ) {
 	if( strcmp(getClientBySocket(sockfd)->topicName, "") != 0 )  {
 			clientOut(sockfd);
 	}
-	clients = deleteClient(sockfd);
+	deleteClient(sockfd);
 	close(sockfd);
 }
 
