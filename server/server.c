@@ -380,19 +380,19 @@ void inviteClient( int sockfd, char message[MTU] ) {
 					sprintf(buffer, "2%s", tmpTopic->topicName);
 					write(targetClient->sockfd, buffer, strlen(buffer));				
 					memset(buffer, 0, sizeof(buffer));
-					sprintf(buffer, "0Invite user %s success!\n", targetName);
+					sprintf(buffer, "0Invite user %s success!", targetName);
 				} else if (check == 2) {	//Neu chatroom full nguoi
-					sprintf(buffer, "0Invite user %s fail because this chatroom is full!\n", targetName);
+					sprintf(buffer, "0Invite user %s fail because this chatroom is full!", targetName);
 				}
 			} else {
 				if( strcmp(targetClient->topicName, tmpTopic->topicName) == 0 ){
-					sprintf(buffer, "0User %s is already in this chatroom!\n", targetName);
+					sprintf(buffer, "0User %s is already in this chatroom!", targetName);
 				} else {
-					sprintf(buffer, "0User %s is in chatroom %s!\n", targetName, targetClient->topicName);
+					sprintf(buffer, "0User %s is in chatroom %s!", targetName, targetClient->topicName);
 				}
 			}
 		} else {
-			sprintf(buffer, "0User %s doesn't exist!\n", targetName);
+			sprintf(buffer, "0User %s doesn't exist!", targetName);
 		}
 		write(sockfd, buffer, strlen(buffer));
         targetName = strtok(NULL, " ");
@@ -458,6 +458,7 @@ void sendListFile( int sockfd ) {
 			strcat(message, listFile[i]);
 		}
 	}
+	strcat(message, "\n");
 	write(sockfd, message, strlen(message));
 }
 
@@ -547,15 +548,15 @@ void downFile( int sockfd, char filename[NAME_SIZE] ) {
 		strcpy(message, "4");
 		strcat(message, filename);
 		write(sockfd, message, strlen(message));
+		usleep(100);
 
-		usleep(1000);
 		fseek(file, 0, SEEK_END);
 		int fileSize = ftell(file);
 
 		memset(message, 0, sizeof(message));
 		sprintf(message, "%d", fileSize);
 		write(sockfd, message, sizeof(message));	// Gui kich thuoc file
-
+		usleep(100);
 		rewind(file);
 		int sendedData = 0, n;
 		while (sendedData < fileSize) {					//Gui file
@@ -563,9 +564,10 @@ void downFile( int sockfd, char filename[NAME_SIZE] ) {
 			n = fread(message, sizeof(char), sizeof(message), file);
 			sendedData += n;
 			write(sockfd, message, n);
+			usleep(100);
 		}
 		if( sendedData == fileSize ) {
-			puts("Send file %s completed!");
+			printf("Send file %s completed!", filename);
 		}
 		fclose(file);
 	}

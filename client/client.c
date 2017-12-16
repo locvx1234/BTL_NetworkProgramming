@@ -290,7 +290,7 @@ void sendFile( int sockfd, char buffer[NAME_SIZE] ) {
 
 	FILE *file = fopen(fileName, "r+");
 	if( file == NULL ) {
-		printf("File %s doens't exist!\n", fileName);
+		printf("File %s doens't exist!\n\n", fileName);
 	} else {
 		fseek(file, 0, SEEK_END);
 		int fileSize = ftell(file);
@@ -301,9 +301,11 @@ void sendFile( int sockfd, char buffer[NAME_SIZE] ) {
 		char message[MTU] = "b";
 		strcat(message, fileName);
 		write(sockfd, message, strlen(message));	// Gui thong bao bFileName
+		usleep(100);
 		memset(message, 0, sizeof(message));
 		sprintf(message, "%d", fileSize);
 		write(sockfd, message, sizeof(message));	// Gui kich thuoc file
+		usleep(100);
 		rewind(file);
 		puts("\nUploading file... Please don't do anything until done!\n");
 		int sendedData = 0, n;
@@ -312,6 +314,7 @@ void sendFile( int sockfd, char buffer[NAME_SIZE] ) {
 			n = fread(message, sizeof(char), MTU, file);
 			sendedData += n;
 			write(sockfd, message, n);
+			usleep(100);
 			printProgress((double)sendedData/fileSize);
 		}
 		if( sendedData == fileSize ) {
@@ -334,9 +337,9 @@ void downFile( int sockfd, char buffer[NAME_SIZE] ) {
 void commandPrompt() {
 	if( strcmp(topicName, "") == 0 ) {
 		printf("Main>");
-	}/* else {
+	} else {
 		printf("%s>", topicName);
-	}*/
+	}
 }
 
 char *nameStandardize( char str[MTU] ) {
