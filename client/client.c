@@ -28,7 +28,7 @@ void sendSingleVariable( int sockfd, char command[2], int skip, char buffer[DATA
 void sendMultiVariables( int sockfd, char command[2], int skip, char buffer[DATA_SIZE]);
 void showMainCommand();
 void showTopicCommand();
-void sendFile( int sockfd, char buffer[DATA_SIZE] );
+void upFile( int sockfd, char buffer[DATA_SIZE] );
 void downFile( int sockfd, char buffer[DATA_SIZE] );
 void commandPrompt();
 char *nameStandardize( char str[MTU] );
@@ -42,8 +42,8 @@ pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 //Main Function
 int main( int argc, char *argv[] ) {
 	if( argc != 2 ) {
-		fprintf(stdin, "Enter IPv4 Address\n");
-		exit(1);
+		printf("usage: ./client <IPaddress>\n");
+		exit(EXIT_FAILURE);
 	}
 
 	//Create a socket
@@ -173,7 +173,7 @@ static void *sendHandler( void *connfd ) {
 					exit(1);
 				}
 				else if( strcmp(command, "@upfile") == 0 ) {		//Command upfile = b
-					sendFile(sockfd, buffer);
+					upFile(sockfd, buffer);
 				}
 				else if( strcmp(command, "@downfile") == 0 ) {		//Command downfile = c
 					downFile(sockfd, buffer);
@@ -288,55 +288,62 @@ void showTopicCommand() {
 }
 
 //Send file to Server
-void sendFile( int sockfd, char buffer[NAME_SIZE] ) {
-	char fileName[DATA_SIZE];
+void upFile( int sockfd, char buffer[NAME_SIZE] ) {
+	char fileName[DATA_SIZE] = "";
 	strncpy(fileName, buffer + 8, strlen(buffer));	//cat chuoi de lay filename
 	strcpy(fileName, nameStandardize(fileName));
-
-	FILE *file = fopen(fileName, "r+");
-	if( file == NULL ) {
-		printf("File %s doens't exist!\n\n", fileName);
+	if ( !strcmp(fileName,"") ){
+		printf("Please enter a file name \nusage: @upfile <filename>\n");
 	} else {
-		fseek(file, 0, SEEK_END);
-		int fileSize = ftell(file);
-		if( fileSize > 1000000000) {
-			puts("You can only send file with size less than 1Gb!\n");
-			return;
-		}
-		char message[MTU] = "b";
-		strcat(message, fileName);
-		write(sockfd, message, strlen(message));	// Gui thong bao bFileName
-		usleep(100);
-		memset(message, 0, sizeof(message));
-		sprintf(message, "%d", fileSize);
-		write(sockfd, message, sizeof(message));	// Gui kich thuoc file
-		usleep(100);
-		rewind(file);
-		puts("\nUploading file... Please don't do anything until done!\n");
-		int sendedData = 0, n;
-		while (sendedData < fileSize) {					//Gui file
-			memset(message, 0, sizeof(message));
-			n = fread(message, sizeof(char), MTU, file);
-			sendedData += n;
-			write(sockfd, message, n);
+		FILE *file = fopen(fileName, "r+");
+		if( file == NULL ) {
+			printf("File %s doens't exist!\n\n", fileName);
+		} else {
+			fseek(file, 0, SEEK_END);
+			int fileSize = ftell(file);
+			if( fileSize > 1000000000) {
+				puts("You can only send file with size less than 1Gb!\n");
+				return;
+			}
+			char message[MTU] = "b";
+			strcat(message, fileName);
+			write(sockfd, message, strlen(message));	// Gui thong bao bFileName
 			usleep(100);
-			printProgress((double)sendedData/fileSize);
+			memset(message, 0, sizeof(message));
+			sprintf(message, "%d", fileSize);
+			write(sockfd, message, sizeof(message));	// Gui kich thuoc file
+			usleep(100);
+			rewind(file);
+			puts("\nUploading file... Please don't do anything until done!\n");
+			int sendedData = 0, n;
+			while (sendedData < fileSize) {					//Gui file
+				memset(message, 0, sizeof(message));
+				n = fread(message, sizeof(char), MTU, file);
+				sendedData += n;
+				write(sockfd, message, n);
+				usleep(100);
+				printProgress((double)sendedData/fileSize);
+			}
+			if( sendedData == fileSize ) {
+				puts("\nUpload completed!\n");
+			}
+			fclose(file);
 		}
-		if( sendedData == fileSize ) {
-			puts("\nUpload completed!\n");
-		}
-		fclose(file);
 	}
 }
 
 //Message 'downloadfile from server'
 void downFile( int sockfd, char buffer[NAME_SIZE] ) {
-	char fileName[DATA_SIZE];
+	char fileName[DATA_SIZE] = "";
 	strncpy(fileName, buffer + 10, strlen(buffer)); //cat chuoi lay ten filename
 	strcpy(fileName, nameStandardize(fileName));
-	char message[MTU] = "c";
-	strcat(message, fileName);
-	write(sockfd, message, strlen(message));		// Gui thong bao cFileName
+	if ( !strcmp(fileName,"") ){
+		printf("Please enter a file name \nusage: @downfile <filename>\n");
+	} else {
+		char message[MTU] = "c";
+		strcat(message, fileName);
+		write(sockfd, message, strlen(message));		// Gui thong bao cFileName
+	}
 }
 
 //command prompt
