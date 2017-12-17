@@ -13,7 +13,6 @@
 
 //Static Define
 #define NUMBER_OF_CLIENT	32
-#define MAX_FILE_PER_TOPIC	5
 #define CLIENT_PER_TOPIC	5
 #define NAME_SIZE			32
 #define DATA_SIZE			1024
@@ -26,7 +25,6 @@ typedef struct Topic {
 	char topicName[NAME_SIZE];
 	int member[CLIENT_PER_TOPIC];		// socket file description of member
 	int countMember;
-	char file[MAX_FILE_PER_TOPIC][NAME_SIZE];
 	int countFile;
 	struct Topic *next;
 } Topic;
@@ -227,7 +225,7 @@ int joinRoom(int sockfd, char topicName[NAME_SIZE]) {
 	Topic *tmpTopic = getTopicByTopicName(topicName);
 	if( tmpTopic == NULL ) {					//return 1 nghia la khong tim thay chatroom
 		return 1;
-	} else if( tmpTopic->countMember == NUMBER_OF_CLIENT ) {
+	} else if( tmpTopic->countMember == CLIENT_PER_TOPIC ) {
 		return 2;								//return 2 nghia la chatroom da full nguoi
 	} else {
 		tmpTopic->member[tmpTopic->countMember] = sockfd;
