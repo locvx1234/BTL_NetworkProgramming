@@ -3,8 +3,8 @@
 #include <stdlib.h>			//exit, malloc
 #include <netinet/in.h>		//??
 #include <arpa/inet.h>		//inet_ntop
-#include <sys/types.h>		//??
-#include <sys/socket.h>		//??
+#include <sys/types.h>		//??types
+#include <sys/socket.h>		//??socket
 #include <unistd.h>			//write, read, close
 #include <pthread.h>		//pthread_create, pthread_detach
 
@@ -101,6 +101,8 @@ int main( int argc, char *argv[] ) {
 	return 0;
 }
 
+//Send Mess (command)
+//sendHandler pthread Funtion
 static void *sendHandler( void *connfd ) {
 	int sockfd = *((int*)connfd);
 	char buffer[DATA_SIZE];
@@ -116,7 +118,7 @@ static void *sendHandler( void *connfd ) {
 			char command[DATA_SIZE];
 			strcpy(command, buffer);
 			strtok(command, " ");
-			if( strcmp(topicName, "") == 0 ) {			//Client chua tham gia chatroom
+			if( strcmp(topicName, "") == 0 ) {			//Client chua tao hoac tham gia chatroom
 				if( strcmp(command, "@create" ) == 0 ) {			//Command create = 0
 					sendSingleVariable(sockfd, "0", 8, buffer);
 				}
@@ -141,7 +143,7 @@ static void *sendHandler( void *connfd ) {
 					puts("--Invalid Command! Type @help!\n");
 				}
 			}
-			else {									//Client da tham gia chatroom
+			else {									//Client da tao hoac tham gia chatroom
 				if( strcmp(command, "@invite") == 0 ) {				//Command invite = 1
 					sendMultiVariables(sockfd, "1", 8, buffer);
 				}
@@ -189,7 +191,7 @@ static void *sendHandler( void *connfd ) {
 	return 0;
 }
 
-//revcmessage thread function
+//revc message thread function
 static void *receiveHandler( void *connfd ) {
 	int sockfd = *((int*)connfd);
 	char message[MTU];
@@ -213,14 +215,14 @@ static void *receiveHandler( void *connfd ) {
 			strcpy(topicName, message);
 			printf("\nYou are now in chatroom %s!\n", topicName);
 		}
-		else if( command == '4' ) {			//4FileName tuc la server chuan bi gui file cho minh
+		else if( command == '4' ) {			//4 ->FileName tuc la server chuan bi gui file cho minh
 			char filename[NAME_SIZE];
 			strcpy(filename, message);
 			memset(message, 0, sizeof(message));
 			read(sockfd, message, sizeof(message));	//Nhan kich thuoc file tu server
 			int fileSize = atoi(message), receivedData = 0, n;
 			FILE *file = fopen(filename, "w");
-			while( receivedData < fileSize ) {
+			while( receivedData < fileSize ) {		//downfile
 				memset(message, 0, sizeof(message));
 				n = read(sockfd, message, sizeof(message));
 				fwrite(message, sizeof(char), n, file);
@@ -261,6 +263,7 @@ void sendMultiVariables( int sockfd, char command[2], int skip, char buffer[DATA
 	write(sockfd, message, strlen(message));
 }
 
+//Show list menu (Client in Main)
 void showMainCommand() {
 	puts("\t@create <chatroom_name>		create a new chatroom");
 	puts("\t@join <chatroom_name>		join an existed chatroom");
@@ -270,8 +273,9 @@ void showMainCommand() {
 	puts("\t@exit				exit program\n");
 }
 
+//Show list Menu (Client in Chatroom)
 void showTopicCommand() {
-	puts("\t@invite <username1> <username2>		invite 1 or many user");
+	puts("\t@invite <username1> <username2>...		invite 1 or many user");
 	puts("\t@listonline				list all users online");
 	puts("\t@listuser				list all users in chatroom");
 	puts("\t@listfile				list all uploaded files in chatroom");
@@ -283,9 +287,10 @@ void showTopicCommand() {
 	puts("\t@exit					exit program\n");
 }
 
+//Send file to Server
 void sendFile( int sockfd, char buffer[NAME_SIZE] ) {
 	char fileName[DATA_SIZE];
-	strncpy(fileName, buffer + 8, strlen(buffer));
+	strncpy(fileName, buffer + 8, strlen(buffer));	//cat chuoi de lay filename
 	strcpy(fileName, nameStandardize(fileName));
 
 	FILE *file = fopen(fileName, "r+");
@@ -324,21 +329,22 @@ void sendFile( int sockfd, char buffer[NAME_SIZE] ) {
 	}
 }
 
-//downloadfile from server
+//Message 'downloadfile from server'
 void downFile( int sockfd, char buffer[NAME_SIZE] ) {
 	char fileName[DATA_SIZE];
-	strncpy(fileName, buffer + 10, strlen(buffer));
+	strncpy(fileName, buffer + 10, strlen(buffer)); //cat chuoi lay ten filename
 	strcpy(fileName, nameStandardize(fileName));
 	char message[MTU] = "c";
 	strcat(message, fileName);
 	write(sockfd, message, strlen(message));		// Gui thong bao cFileName
 }
 
+//command prompt
 void commandPrompt() {
 	if( strcmp(topicName, "") == 0 ) {
-		printf("Main>");
+		printf("Main>");			//dau nhac Main chinh
 	} else {
-		printf("%s>", topicName);
+		printf("%s>", topicName);	//dau nhac topic
 	}
 }
 
@@ -372,6 +378,7 @@ char *stringStandardize( char str[MTU] ) {
 	return des;
 }
 
+//Print "%" Progress 
 void printProgress( double process ) {
 	int val = (int) (process * 100);
 	int lpad = (int) (process * PBWIDTH);

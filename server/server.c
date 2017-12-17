@@ -3,8 +3,8 @@
 #include <stdlib.h>			//exit, malloc
 #include <netinet/in.h>		//??
 #include <arpa/inet.h>		//inet_ntop
-#include <sys/types.h>		//??
-#include <sys/socket.h>		//??
+#include <sys/types.h>		//??types
+#include <sys/socket.h>		//??socket
 #include <unistd.h>			//write, read, close
 #include <pthread.h>		//pthread_create, pthread_detach
 
@@ -112,7 +112,6 @@ int main( int argc, char **argv ) {
 		connfd = malloc(sizeof(int));
 		*connfd = accept(listenfd, (SA*)&cliaddr, &clilen);
 		printf("IPv4 Address: %s, Port: %d\n", inet_ntoa(cliaddr.sin_addr), cliaddr.sin_port);
-		
 		pthread_create(&tid, NULL, &doit, (void*)connfd);
 	}
 
@@ -146,13 +145,13 @@ static void *doit( void *connfd ) {
 			strcat(msgChat, message);
 			sendToAllClient(sockfd, msgChat);
 		}
-		else if( command == '0' ) {		//@create. Tao room chat.
+		else if( command == '0' ) {		//@create. Create new roomchat.
 			createTopic(sockfd, message);
 		}
-		else if( command == '1' ) {		//@invite.
+		else if( command == '1' ) {		//@invite. Moi them ban vao roomchat
 			inviteClient(sockfd, message);
 		}
-		else if( command == '2' ) {		//@join.
+		else if( command == '2' ) {		//@join. Tu join vao trong roomchat
 			clientJoin(sockfd, message);
 		}
 		else if( command == '3' ) {		//@listonline. Gui danh sach nhung user dang online nhung chua vao room chat nao
@@ -166,25 +165,24 @@ static void *doit( void *connfd ) {
 		}
 		else if( command == '6' ) {		//@listchatroom. Gui danh sach nhung chatroom hien co.
 			sendListTopic(sockfd);
-		}
-		/*else if( command == '7' ) {		
-			
+		}/*
+		else if ( command == '7' ) {
+			//thua command 7 neu nghi ra chuc nang khac moi
 		}*/
 		else if( command == '8' ) {		//@out. Client thoat khoi room chat hien tai.
 			clientOut(sockfd);
 		}
-		else if( command == '9' ) {		//@exit. Client 
+		else if( command == '9' ) {		//@exit. Client thoat khoi chuong trinh
 			clientExit(sockfd);
 		}
-		else if(command == 'b' ) {		//@upfile
+		else if(command == 'b' ) {		//@upfile. Client upfile len server
 			upFile(sockfd, message);
 		}
-		else if (command == 'c' ) {		//@downfile
+		else if (command == 'c' ) {		//@downfile. Client downfile tu server
 			downFile(sockfd, message);
 		}
 		memset(message, 0, sizeof(message));
 	}
-
 	close(sockfd);
 	return NULL;
 }
@@ -224,6 +222,7 @@ Client *getClientByName( char username[NAME_SIZE] ) {
 	return NULL;
 }
 
+//Join the roomchat
 int joinRoom(int sockfd, char topicName[NAME_SIZE]) {
 	Topic *tmpTopic = getTopicByTopicName(topicName);
 	if( tmpTopic == NULL ) {					//return 1 nghia la khong tim thay chatroom
@@ -239,6 +238,7 @@ int joinRoom(int sockfd, char topicName[NAME_SIZE]) {
 	}
 }
 
+//Build List File
 int buildListFile( char *listFile[], const char *path ) {
 	DIR *d = opendir(path);
 	int i = 0;
@@ -255,6 +255,7 @@ int buildListFile( char *listFile[], const char *path ) {
 	return i;
 }
 
+//Delete Folder (Delete Folderroomchat)
 void deleteFolder( const char *path ) {
 	struct stat st = {0};
 	if( stat(path, &st) != 0 ) {		//stat = 0 nghia la folder co ton tai
@@ -274,6 +275,7 @@ void deleteFolder( const char *path ) {
 	rmdir(path);
 }
 
+//Send Mess to all client (chat group)
 void sendToAllClient( int sockfd, char message[MTU] ) {
 	Topic *tmpTopic = getTopicByTopicName(getClientBySocket(sockfd)->topicName);
 	int i;
@@ -284,6 +286,7 @@ void sendToAllClient( int sockfd, char message[MTU] ) {
 	}
 }
 
+//Add other Clients
 void addClient( int sockfd, char username[NAME_SIZE] ) {
 	Client *tmpClient = (Client*)malloc(sizeof(Client));
 	tmpClient->sockfd = sockfd;
@@ -294,6 +297,7 @@ void addClient( int sockfd, char username[NAME_SIZE] ) {
 	printf("Client %s created!\n", username);
 }
 
+//Delete Client (client out, exit)
 Client *deleteClient( int sockfd ) {
 	Client *tmpClient = getClientBySocket(sockfd);
 	printf("Client %s deleted!\n", tmpClient->username);
@@ -318,12 +322,12 @@ Client *deleteClient( int sockfd ) {
 	return current;
 }
 
+//Create Chatroom
 void createTopic( int sockfd, char topicName[NAME_SIZE] ) {
 	Topic *tmpTopic = getTopicByTopicName(topicName);
 	char message[MTU];
 	if( tmpTopic != NULL ) {
-		strcpy(message, "0Your chatroom name is already existed!");
-		
+		strcpy(message, "0Your chatroom name is already existed!");		
 	} else {
 		tmpTopic = (Topic *)malloc(sizeof(Topic));
 		strcpy(tmpTopic->topicName, topicName);
@@ -342,6 +346,7 @@ void createTopic( int sockfd, char topicName[NAME_SIZE] ) {
 	write(sockfd, message, strlen(message));
 }
 
+//Delete Topic ()
 Topic *deleteTopic( char topicName[NAME_SIZE] ) {
 	char path[NAME_SIZE+4] = "./";
 	strcat(path, topicName);
@@ -365,6 +370,7 @@ Topic *deleteTopic( char topicName[NAME_SIZE] ) {
 	return current;
 }
 
+//Invite Friend into chatroom
 void inviteClient( int sockfd, char message[MTU] ) {
 	Topic *tmpTopic = getTopicByTopicName(getClientBySocket(sockfd)->topicName);
 	char buffer[MTU];
@@ -400,6 +406,7 @@ void inviteClient( int sockfd, char message[MTU] ) {
     }
 }
 
+//Client join into chatroom
 void clientJoin( int sockfd, char topicName[NAME_SIZE] ) {
 	int check = joinRoom(sockfd, topicName);
 	char message[MTU];
@@ -419,6 +426,7 @@ void clientJoin( int sockfd, char topicName[NAME_SIZE] ) {
 	}
 }
 
+//Build list user online
 void sendListOnline( int sockfd ){
 	Client *tmpClient;
 	char message[MTU] = "0List user online:";
@@ -430,6 +438,7 @@ void sendListOnline( int sockfd ){
 	write(sockfd, message, strlen(message));
 }
 
+//List User in chatroom
 void sendListUser( int sockfd ){
 	Topic *tmpTopic = getTopicByTopicName(getClientBySocket(sockfd)->topicName);
 	char message[MTU] = "0List user in this chatroom:";
@@ -442,6 +451,7 @@ void sendListUser( int sockfd ){
 	write(sockfd, message, strlen(message));
 }
 
+//Build list File
 void sendListFile( int sockfd ) {
 	char *listFile[NAME_SIZE];
 	char path[NAME_SIZE + 4] = "./";
@@ -462,6 +472,7 @@ void sendListFile( int sockfd ) {
 	write(sockfd, message, strlen(message));
 }
 
+//List chatroom
 void sendListTopic( int sockfd ) {
 	char message[MTU];
 	if( topics == NULL ) {
@@ -478,6 +489,7 @@ void sendListTopic( int sockfd ) {
 	write(sockfd, message, strlen(message));
 }
 
+//Client out chatroom
 void clientOut( int sockfd ) {
 	Client *tmpClient = getClientBySocket(sockfd);
 	Topic *tmpTopic = getTopicByTopicName(tmpClient->topicName);
@@ -503,6 +515,7 @@ void clientOut( int sockfd ) {
 	strcpy(tmpClient->topicName, "");
 }
 
+//Client exit program
 void clientExit( int sockfd ) {
 	if( strcmp(getClientBySocket(sockfd)->topicName, "") != 0 )  {
 			clientOut(sockfd);
@@ -511,17 +524,16 @@ void clientExit( int sockfd ) {
 	close(sockfd);
 }
 
+//Up file to client
 void upFile( int sockfd, char filename[NAME_SIZE] ) {
 	char path[NAME_SIZE + 4] = "./";
 	strcat(path, getClientBySocket(sockfd)->topicName);
 	strcat(path, "/");
-	strcat(path, filename);
-
+	strcat(path, filename);			//copy file vao path
 	char message[MTU];
 	memset(message, 0, sizeof(message));
 	read(sockfd, message, sizeof(message));
 	int fileSize = atoi(message), receivedData = 0, n;
-
 	FILE *file = fopen(path, "w");
 	while( receivedData < fileSize ) {
 		memset(message, 0, sizeof(message));
@@ -533,12 +545,12 @@ void upFile( int sockfd, char filename[NAME_SIZE] ) {
 	fclose(file);
 }
 
+//down file from client
 void downFile( int sockfd, char filename[NAME_SIZE] ) {
 	char path[NAME_SIZE + 4] = "./", message[MTU];
 	strcat(path, getClientBySocket(sockfd)->topicName);
 	strcat(path, "/");
 	strcat(path, filename);
-
 	FILE *file = fopen(path, "r+");
 	if( file == NULL ) {			// Neu file khong ton tai thi gui kich thuoc file la -1 (kieu string)
 		memset(message, 0, sizeof(message));
@@ -549,10 +561,8 @@ void downFile( int sockfd, char filename[NAME_SIZE] ) {
 		strcat(message, filename);
 		write(sockfd, message, strlen(message));
 		usleep(100);
-
 		fseek(file, 0, SEEK_END);
 		int fileSize = ftell(file);
-
 		memset(message, 0, sizeof(message));
 		sprintf(message, "%d", fileSize);
 		write(sockfd, message, sizeof(message));	// Gui kich thuoc file
