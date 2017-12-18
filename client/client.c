@@ -131,6 +131,9 @@ static void *sendHandler( void *connfd ) {
 				else if( strcmp(command, "@listchatroom") == 0 ) {	//Command listchatroom = 6
 					write(sockfd, "6", 1);
 				}
+				else if( strcmp(command, "@pm") == 0 ) {	//Command chat one to one
+					sendSingleVariable(sockfd, "7", 4, buffer);
+				}
 				else if( strcmp(command, "@help") == 0 ) {			//Command help = 7
 					showMainCommand();
 				}
@@ -206,7 +209,7 @@ static void *receiveHandler( void *connfd ) {
 			printf("Chatroom %s created success!\n", topicName);
 			printf("\nYou are now in chatroom %s!\n", topicName);
 		}
-		else if( command == '2' ) {			//2 -> nhan command khi bi thang ngu nao do keo minh vao chatroom
+		else if( command == '2' ) {			//2 -> nhan command khi bi ai do moi vao chatroom
 			strcpy(topicName, message);
 			printf("You have been invited to chatroom %s\n", topicName);
 			printf("You are now in chatroom %s!\n\n", topicName);
@@ -231,6 +234,14 @@ static void *receiveHandler( void *connfd ) {
 			}
 			printf("\nDownload file %s completed!\n\n", filename);
 			fclose(file);
+		}
+		else if( command == '5' ) {			//5 -> chat rieng that bai 
+			strcpy(topicName, message);
+			printf("%s is now in busy!\n\n", message);
+		}
+		else if( command == '6' ) {			//6 -> chat rieng thanh cong 
+			strcpy(topicName, message);
+			printf("\nYou are connected with %s! \n\n", message);
 		}
 		memset(message, 0, sizeof(message));
 	}
@@ -265,6 +276,7 @@ void sendMultiVariables( int sockfd, char command[2], int skip, char buffer[DATA
 
 //Show list menu (Client in Main)
 void showMainCommand() {
+	puts("\t@pm <username>		private message");
 	puts("\t@create <chatroom_name>		create a new chatroom");
 	puts("\t@join <chatroom_name>		join an existed chatroom");
 	puts("\t@listonline			list all users online");
@@ -350,9 +362,10 @@ void downFile( int sockfd, char buffer[NAME_SIZE] ) {
 void commandPrompt() {
 	if( strcmp(topicName, "") == 0 ) {
 		printf("Main>");			//dau nhac Main chinh
-	} else {
-		printf("%s>", topicName);	//dau nhac topic
-	}
+	} 
+	// else {
+	// 	printf("%s>", topicName);	//dau nhac topic
+	// }
 }
 
 char *nameStandardize( char str[MTU] ) {
