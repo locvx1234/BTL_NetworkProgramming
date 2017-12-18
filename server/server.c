@@ -4,7 +4,7 @@
 #include <netinet/in.h>		//??
 #include <arpa/inet.h>		//inet_ntop
 #include <sys/types.h>		//??types
-#include <sys/socket.h>		//??socket
+#include <sys/socket.h>		//socket, bind, listen, accept, setsockopt
 #include <unistd.h>			//write, read, close
 #include <pthread.h>		//pthread_create, pthread_detach
 
@@ -49,6 +49,7 @@ void sendToAllClient( int sockfd, char message[MTU] );					//a
 void addClient( int sockfd, char username[NAME_SIZE] );				//-1
 Client *deleteClient( int sockfd );
 void createTopic( int sockfd, char topicName[NAME_SIZE] );				//0
+void createPrivateTopic( int sockfd, char topicName[NAME_SIZE] );
 Topic *deleteTopic( char topicName[NAME_SIZE] );
 void inviteClient( int sockfd, char message[MTU] );					//1
 void clientJoin( int sockfd, char topicName[NAME_SIZE] );				//2
@@ -56,6 +57,9 @@ void sendListOnline( int sockfd );									//3
 void sendListUser( int sockfd );									//4
 void sendListFile( int sockfd );									//5
 void sendListTopic( int sockfd );									//6
+char *genRandName();
+void createPrivateChat( int sockfd, char message[MTU]); 			//7
+void parnerJoin( int sockfd, char message[MTU] );
 void clientOut( int sockfd );										//8
 void clientExit( int sockfd );										//9
 void upFile( int sockfd, char filename[NAME_SIZE] );		//b
@@ -77,6 +81,8 @@ int main( int argc, char **argv ) {
 		puts("Socket created!");
 	}
 	
+	
+
 	//Server IP and Port
 	struct sockaddr_in servaddr;
 	memset((char*)&servaddr, 0, sizeof(servaddr));
@@ -110,6 +116,11 @@ int main( int argc, char **argv ) {
 		connfd = malloc(sizeof(int));
 		*connfd = accept(listenfd, (SA*)&cliaddr, &clilen);
 		printf("IPv4 Address: %s, Port: %d\n", inet_ntoa(cliaddr.sin_addr), cliaddr.sin_port);
+	// 	int interval = 1;
+
+	// if(	setsockopt(listenfd, SOL_SOCKET, SO_KEEPALIVE, &interval, sizeof(interval)) != 0 ){
+	// 	printf("disconnect with");
+	// } 
 		pthread_create(&tid, NULL, &doit, (void*)connfd);
 	}
 
@@ -120,6 +131,7 @@ int main( int argc, char **argv ) {
 static void *doit( void *connfd ) {
 	int sockfd = *((int*)connfd);
 	free(connfd);
+
 	pthread_detach(pthread_self());
 	char message[MTU] = "";
 	while( read(sockfd, message, sizeof(message)) > 0 ) {  //Nhan goi tin chua username tu client moi
@@ -163,10 +175,10 @@ static void *doit( void *connfd ) {
 		}
 		else if( command == '6' ) {		//@listchatroom. Gui danh sach nhung chatroom hien co.
 			sendListTopic(sockfd);
-		}/*
+		}
 		else if ( command == '7' ) {
-			//thua command 7 neu nghi ra chuc nang khac moi
-		}*/
+			createPrivateChat(sockfd, message);
+		}
 		else if( command == '8' ) {		//@out. Client thoat khoi room chat hien tai.
 			clientOut(sockfd);
 		}
@@ -344,6 +356,28 @@ void createTopic( int sockfd, char topicName[NAME_SIZE] ) {
 	write(sockfd, message, strlen(message));
 }
 
+//Create Chatroom
+void createPrivateTopic( int sockfd, char topicName[NAME_SIZE] ) {
+	Topic *tmpTopic = getTopicByTopicName(topicName);
+	char message[MTU];
+	if( tmpTopic != NULL ) {
+		strcpy(message, "0Your chatroom name is already existed!");		
+	} else {
+		tmpTopic = (Topic *)malloc(sizeof(Topic));
+		strcpy(tmpTopic->topicName, topicName);
+		tmpTopic->member[0] = sockfd;
+		tmpTopic->countMember = 1;
+		tmpTopic->countFile = 0;
+		tmpTopic->next = topics;
+		topics = tmpTopic;
+		Client *tmpClient = getClientBySocket(sockfd);
+		strcpy(tmpClient->topicName, topicName);
+		char path[NAME_SIZE+4] = "./";
+		mkdir(strcat(path, topicName), 0777);
+		printf("Chatroom %s created!\n", topicName);
+	}
+}
+
 //Delete Topic ()
 Topic *deleteTopic( char topicName[NAME_SIZE] ) {
 	char path[NAME_SIZE+4] = "./";
@@ -479,12 +513,69 @@ void sendListTopic( int sockfd ) {
 		Topic *tmpTopic;
 		strcpy(message, "0List chatrooms:");
 		for( tmpTopic = topics ; tmpTopic != NULL ; tmpTopic = tmpTopic->next ) {
-			strcat(message, "\n---");
-			strcat(message, tmpTopic->topicName);
+			if( tmpTopic->topicName[0] != '.' ) {
+				strcat(message, "\n---");
+				strcat(message, tmpTopic->topicName);
+			}
 		}
 		strcat(message, "\n");
 	}
 	write(sockfd, message, strlen(message));
+}
+
+// Genarate ramdom private topic name
+char *genRandName() {
+	static const char alphanum[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789~!@#$%^&*()_";
+	char *s = (char*)malloc(NAME_SIZE);
+	s[0] = '.';
+	int i;
+	for (i = 1; i < NAME_SIZE-1; i++) {
+		s[i] = alphanum[rand() % (sizeof(alphanum) - 1)];
+	}
+	s[NAME_SIZE-1] = '\0';
+	return s;
+}
+
+void createPrivateChat( int sockfd, char message[MTU] ) {
+	char buffer[MTU];
+	memset(buffer, 0, sizeof(buffer));
+	Client *tmpClient = getClientByName(message);
+	if( tmpClient != NULL ) {
+		if( strcmp(tmpClient->topicName, "") != 0 ) {
+			strcat(buffer, "5");							// user busy
+			strcat(buffer, message);
+			write(sockfd, buffer, strlen(buffer));
+		} else {
+			char topicName[NAME_SIZE] = "";
+			strcpy(topicName, genRandName()); 
+			createPrivateTopic(sockfd, topicName);
+			parnerJoin(sockfd, message);
+		}
+	} else {
+		sprintf(buffer, "0User %s doesn't exist!", message);
+		write(sockfd, buffer, strlen(buffer));
+	}
+}
+
+void parnerJoin( int sockfd, char message[MTU] ) {
+	Topic *tmpTopic = getTopicByTopicName(getClientBySocket(sockfd)->topicName);
+	char buffer[MTU];
+	
+	memset(buffer, 0, sizeof(buffer));
+	Client *targetClient = getClientByName(message);
+	if( targetClient != NULL ) {
+		int check = joinRoom(targetClient->sockfd, tmpTopic->topicName);
+		if( check == 0 ) {			// invite success
+			sprintf(buffer, "6%s", getClientBySocket(sockfd)->username);
+			write(targetClient->sockfd, buffer, strlen(buffer));				
+			memset(buffer, 0, sizeof(buffer));
+			sprintf(buffer, "6%s", message);
+		} 
+	} else {
+		sprintf(buffer, "0User %s doesn't exist!", message);
+	}
+	write(sockfd, buffer, strlen(buffer));
+    usleep(500);
 }
 
 //Client out chatroom
