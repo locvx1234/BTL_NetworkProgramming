@@ -4,10 +4,10 @@ Chat program base on MQTT protocol
 
 ## Function
 
-- Create group chat
-- Chat with each other in a group
-- Take part in a group
-- Invite a person to group
+- Create room chat
+- Chat with a friend or other many friend in a group chat
+- Take part in a group chat
+- Invite a person to group chat
 - Upload file and download file 
 		
 			
