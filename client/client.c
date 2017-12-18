@@ -132,6 +132,7 @@ static void *sendHandler( void *connfd ) {
 					write(sockfd, "6", 1);
 				}
 				else if( strcmp(command, "@pm") == 0 ) {	//Command chat one to one
+
 					sendSingleVariable(sockfd, "7", 4, buffer);
 				}
 				else if( strcmp(command, "@help") == 0 ) {			//Command help = 7
@@ -236,7 +237,6 @@ static void *receiveHandler( void *connfd ) {
 			fclose(file);
 		}
 		else if( command == '5' ) {			//5 -> chat rieng that bai 
-			strcpy(topicName, message);
 			printf("%s is now in busy!\n\n", message);
 		}
 		else if( command == '6' ) {			//6 -> chat rieng thanh cong 

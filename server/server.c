@@ -525,7 +525,7 @@ void sendListTopic( int sockfd ) {
 
 // Genarate ramdom private topic name
 char *genRandName() {
-	static const char alphanum[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789~!@#$%^&*()_";
+	static const char alphanum[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 	char *s = (char*)malloc(NAME_SIZE);
 	s[0] = '.';
 	int i;
@@ -541,15 +541,20 @@ void createPrivateChat( int sockfd, char message[MTU] ) {
 	memset(buffer, 0, sizeof(buffer));
 	Client *tmpClient = getClientByName(message);
 	if( tmpClient != NULL ) {
-		if( strcmp(tmpClient->topicName, "") != 0 ) {
-			strcat(buffer, "5");							// user busy
-			strcat(buffer, message);
+		if (strcmp(getClientBySocket(sockfd)->username, message) == 0){
+			strcat(buffer, "0You cannot chat with yourself");
 			write(sockfd, buffer, strlen(buffer));
 		} else {
-			char topicName[NAME_SIZE] = "";
-			strcpy(topicName, genRandName()); 
-			createPrivateTopic(sockfd, topicName);
-			parnerJoin(sockfd, message);
+			if( strcmp(tmpClient->topicName, "") != 0 ) {
+				strcat(buffer, "5");							// user busy
+				strcat(buffer, message);
+				write(sockfd, buffer, strlen(buffer));
+			} else {
+				char topicName[NAME_SIZE] = "";
+				strcpy(topicName, genRandName()); 
+				createPrivateTopic(sockfd, topicName);
+				parnerJoin(sockfd, message);
+			}
 		}
 	} else {
 		sprintf(buffer, "0User %s doesn't exist!", message);
@@ -560,21 +565,17 @@ void createPrivateChat( int sockfd, char message[MTU] ) {
 void parnerJoin( int sockfd, char message[MTU] ) {
 	Topic *tmpTopic = getTopicByTopicName(getClientBySocket(sockfd)->topicName);
 	char buffer[MTU];
-	
 	memset(buffer, 0, sizeof(buffer));
 	Client *targetClient = getClientByName(message);
-	if( targetClient != NULL ) {
-		int check = joinRoom(targetClient->sockfd, tmpTopic->topicName);
-		if( check == 0 ) {			// invite success
-			sprintf(buffer, "6%s", getClientBySocket(sockfd)->username);
-			write(targetClient->sockfd, buffer, strlen(buffer));				
-			memset(buffer, 0, sizeof(buffer));
-			sprintf(buffer, "6%s", message);
-		} 
-	} else {
-		sprintf(buffer, "0User %s doesn't exist!", message);
-	}
-	write(sockfd, buffer, strlen(buffer));
+
+	int check = joinRoom(targetClient->sockfd, tmpTopic->topicName);
+	if( check == 0 ) {			// invite success
+		sprintf(buffer, "6%s", getClientBySocket(sockfd)->username);
+		write(targetClient->sockfd, buffer, strlen(buffer));				
+		memset(buffer, 0, sizeof(buffer));
+		sprintf(buffer, "6%s", message);
+		write(sockfd, buffer, strlen(buffer));
+	} 
     usleep(500);
 }
 
@@ -615,7 +616,7 @@ void clientExit( int sockfd ) {
 
 //Up file to client
 void upFile( int sockfd, char filename[NAME_SIZE] ) {
-	char path[NAME_SIZE + 4] = "./";
+	char path[NAME_SIZE*2 + 6] = "./";
 	strcat(path, getClientBySocket(sockfd)->topicName);
 	strcat(path, "/");
 	strcat(path, filename);			//copy file vao path
