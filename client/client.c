@@ -113,7 +113,7 @@ static void *sendHandler( void *connfd ) {
 		fgets(buffer, sizeof(buffer), stdin);	//Client nhap lenh, hoac nhap cau chat
 		fflush(stdin);
 		if( buffer[0] != '\n') {
-			if (buffer[strlen(buffer)-1] == '\n')
+			if( buffer[strlen(buffer)-1] == '\n' )
 				buffer[strlen(buffer)-1] = '\0';
 			char command[DATA_SIZE];
 			strcpy(command, buffer);
@@ -241,7 +241,7 @@ static void *receiveHandler( void *connfd ) {
 		}
 		else if( command == '6' ) {			//6 -> chat rieng thanh cong 
 			strcpy(topicName, message);
-			printf("\nYou are connected with %s! \n\n", message);
+			printf("You are connected with %s!\n", message);
 		}
 		memset(message, 0, sizeof(message));
 	}
@@ -304,7 +304,7 @@ void upFile( int sockfd, char buffer[NAME_SIZE] ) {
 	char fileName[DATA_SIZE] = "";
 	strncpy(fileName, buffer + 8, strlen(buffer));	//cat chuoi de lay filename
 	strcpy(fileName, nameStandardize(fileName));
-	if ( !strcmp(fileName,"") ){
+	if( !strcmp(fileName,"") ) {
 		printf("Please enter a file name \nusage: @upfile <filename>\n");
 	} else {
 		FILE *file = fopen(fileName, "r+");
@@ -326,9 +326,9 @@ void upFile( int sockfd, char buffer[NAME_SIZE] ) {
 			write(sockfd, message, sizeof(message));	// Gui kich thuoc file
 			usleep(100);
 			rewind(file);
-			puts("\nUploading file... Please don't do anything until done!\n");
+			puts("\nUploading file... Please don't do anything until done!");
 			int sendedData = 0, n;
-			while (sendedData < fileSize) {					//Gui file
+			while(sendedData < fileSize) {					//Gui file
 				memset(message, 0, sizeof(message));
 				n = fread(message, sizeof(char), MTU, file);
 				sendedData += n;
@@ -349,7 +349,7 @@ void downFile( int sockfd, char buffer[NAME_SIZE] ) {
 	char fileName[DATA_SIZE] = "";
 	strncpy(fileName, buffer + 10, strlen(buffer)); //cat chuoi lay ten filename
 	strcpy(fileName, nameStandardize(fileName));
-	if ( !strcmp(fileName,"") ){
+	if( !strcmp(fileName,"") ) {
 		printf("Please enter a file name \nusage: @downfile <filename>\n");
 	} else {
 		char message[MTU] = "c";
